@@ -36,7 +36,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 
 [Production Matching for Large Learning Systems](http://reports-archive.adm.cs.cmu.edu/anon/1995/CMU-CS-95-113.pdf), Robert B. Doorenbos, 1995
 
-[Jess Rules in Action](http://www.manning.com/friedman-hill/) Ernest Friedman-Hill, 2003
+[Jess in Action: Java Rule-based Systems](http://www.manning.com/friedman-hill/) Ernest Friedman-Hill, 2003
 
 [OPS5](https://github.com/briangu/OPS5) "This Common Lisp version of OPS5 is in the public domain.  It is based in part on based on a Franz Lisp implementation done by Charles L. Forgy"
 
