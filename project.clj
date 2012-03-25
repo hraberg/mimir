@@ -1,4 +1,4 @@
-(defproject mimir "1.0.0-SNAPSHOT"
+(defproject mimir "0.1.0-SNAPSHOT"
   :description "Mímir is an experimental rule engine written in Clojure"
   :dependencies [[clojure "1.4.0-beta5"]
                  [log4j/log4j "1.2.16"]
