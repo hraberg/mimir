@@ -3209,17 +3209,22 @@ net.brehaut.ClojureTools = (function (SH) {
         (fact fact#)))
   ([id rel attr]
      `(assert ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn run-once [wm productions]
+  (-&gt;&gt; productions
+       (mapcat #(% wm))
+       (map #(%))
+       set))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn run
   ([] (run *net*))
   ([net]
      (binding [*net* net]
-       (let [{:keys [working-memory productions]} @net]
-         (union (-&gt;&gt; productions
-                     (mapcat #(% working-memory))
-                     (map #(%))
-                     set)
-                (when (seq (difference (:working-memory @*net*) working-memory))
-                  (run *net*)))))))</pre></td></tr><tr><td class="docs">
+       (loop [wm (working-memory)
+              productions (:productions @net)
+              acc #{}]
+         (let [acc (union (run-once wm productions) acc)]
+           (if (seq (difference (working-memory) wm))
+             (recur (working-memory) productions acc)
+             acc))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro match? [&amp; expected]
   `(= (set ~(vec (triplets expected quote-fact))) (set (run))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro ? [&amp; expected]
