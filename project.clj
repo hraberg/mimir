@@ -6,4 +6,6 @@
   :dev-dependencies [[org.clojure/tools.trace "0.7.2-20120223.025622-2"]
                      [marginalia "0.7.0"]
                      [lein-difftest "1.3.7"]]
-  :repl-init mimir.well)
+  :repl-init mimir.well
+  :main mimir.well
+  :aot [mimir.well])

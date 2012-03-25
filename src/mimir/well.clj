@@ -2,7 +2,8 @@
   (:use [clojure.set :only (intersection map-invert rename-keys difference union)]
         [clojure.tools.logging :only (debug info warn error)]
         [clojure.walk :only (postwalk)])
-  (:refer-clojure :exclude [assert]))
+  (:refer-clojure :exclude [assert])
+  (:gen-class))
 
 (defn create-net []
   {:productions #{}
@@ -226,3 +227,10 @@
 
 (defn reset []
   (reset! *net* (create-net)))
+
+(defn -main [& args]
+  (println)
+  (println "Welcome to Mímir |" (-> "project.clj" slurp read-string (nth 2)) "| Copyright © 2012 Håkan Råberg")
+  (println)
+  (require 'clojure.main)
+  (clojure.main/repl :init #(in-ns 'mimir.well)))
