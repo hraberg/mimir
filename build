@@ -1,0 +1,6 @@
+#!/bin/bash -e
+
+rm -rf classes *.jar lib
+
+lein deps
+lein uberjar, difftest, run -m marginalia.main --file index.html
