@@ -210,17 +210,23 @@
   ([id rel attr]
      `(assert ~(list id rel attr))))
 
+(defn run-once [wm productions]
+  (->> productions
+       (mapcat #(% wm))
+       (map #(%))
+       set))
+
 (defn run
   ([] (run *net*))
   ([net]
      (binding [*net* net]
-       (let [{:keys [working-memory productions]} @net]
-         (union (->> productions
-                     (mapcat #(% working-memory))
-                     (map #(%))
-                     set)
-                (when (seq (difference (:working-memory @*net*) working-memory))
-                  (run *net*)))))))
+       (loop [wm (working-memory)
+              productions (:productions @net)
+              acc #{}]
+         (let [acc (union (run-once wm productions) acc)]
+           (if (seq (difference (working-memory) wm))
+             (recur (working-memory) productions acc)
+             acc))))))
 
 (defmacro match? [& expected]
   `(= (set ~(vec (triplets expected quote-fact))) (set (run))))
