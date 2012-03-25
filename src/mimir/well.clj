@@ -35,8 +35,8 @@
 (defn vars [x]
   (set (filter is-var? x)))
 
-(defn all-vars [rhs]
-  (-> rhs flatten vars vec))
+(defn all-vars [x]
+  (-> x flatten vars vec))
 
 (defn quote-fact [t]
   (list 'quote t))
@@ -77,7 +77,7 @@
          (get-in @*net* ['~cache-name key#])))))
 
 (defn join-on [x y]
-  (intersection (vars x) (vars y)))
+  (intersection (set (all-vars x)) (set (all-vars y))))
 
 (defn vars-by-index [c]
   (->> c (filter is-var?)
