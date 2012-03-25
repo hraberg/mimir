@@ -3059,8 +3059,8 @@ net.brehaut.ClojureTools = (function (SH) {
                       (not (is-var? %))) (list 'quote %) %) rhs))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn vars [x]
   (set (filter is-var? x)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn all-vars [rhs]
-  (-&gt; rhs flatten vars vec))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn all-vars [x]
+  (-&gt; x flatten vars vec))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn quote-fact [t]
   (list 'quote t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn expand-rhs [t]
@@ -3095,7 +3095,7 @@ net.brehaut.ClojureTools = (function (SH) {
            v#)
          (get-in @*net* ['~cache-name key#])))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn join-on [x y]
-  (intersection (vars x) (vars y)))</pre></td></tr><tr><td class="docs">
+  (intersection (set (all-vars x)) (set (all-vars y))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn vars-by-index [c]
   (-&gt;&gt; c (filter is-var?)
        (map-indexed #(vector (symbol (str &quot;?&quot; (inc %1)))  %2))
@@ -3105,21 +3105,23 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn predicate-for [c]
   (with-cache predicates c
     (eval `(fn ~(all-vars c) ~c))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn match-using-predicate [c wm]
+  (try
+    (debug &quot;predicate&quot; c wm)
+    (let [args (all-vars c)
+          predicate (predicate-for c)]
+      (if (= 1 (count args))
+        (when (predicate wm)
+          (debug &quot; evaluated to true&quot;)
+          {(first args) wm})
+        (do
+          (debug &quot; more than one argument, needs beta network&quot;)
+          (apply hash-map (interleave args (repeat predicate))))))
+    (catch RuntimeException e
+      (debug &quot; threw non fatal&quot; e))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn match-wme [c wm]
   (if (resolve (first c))
-    (try
-      (debug &quot;predicate&quot; c wm)
-      (let [args (all-vars c)
-            predicate (predicate-for c)]
-        (if (= 1 (count args))
-          (when (predicate wm)
-            (debug &quot; evaluated to true&quot;)
-            {(first args) wm})
-          (do
-            (debug &quot; more than one argument, needs beta network&quot;)
-            (apply hash-map (interleave args (repeat predicate))))))
-      (catch RuntimeException e
-        (debug &quot; threw non fatal&quot; e)))
+    (match-using-predicate c wm)
     (loop [[v &amp; vs] wm [t &amp; ts] c m {}]
       (if v
         (condp some [t]
