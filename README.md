@@ -1,6 +1,6 @@
 # Mímir
 
-[<img width="154" src="https://github.com/hraberg/mimer/resources/mimer.jpg" alt="Mímir - Copyright © Peter Madsen" title="Mímir - Copyright © Peter Madsen" align="right" />](http://www.petermadsen.info/pages/vh/hv-er-hv/mimir.html)
+[<img width="154" src=https://github.com/hraberg/mimir/raw/master/resources/mimer.jpg alt="Mímir - Copyright © Peter Madsen" title="Mímir - Copyright © Peter Madsen" align="right" />](http://www.petermadsen.info/pages/vh/hv-er-hv/mimir.html)
 
 *The god Odin carries around [Mímir's head](http://clojure.org/lazy#Making Clojure Lazier--Don't hang \(onto\) your head) and it recites secret knowledge and counsel to him.*
 
