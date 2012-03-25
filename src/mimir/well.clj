@@ -91,21 +91,24 @@
   (with-cache predicates c
     (eval `(fn ~(all-vars c) ~c))))
 
+(defn match-using-predicate [c wm]
+  (try
+    (debug "predicate" c wm)
+    (let [args (all-vars c)
+          predicate (predicate-for c)]
+      (if (= 1 (count args))
+        (when (predicate wm)
+          (debug " evaluated to true")
+          {(first args) wm})
+        (do
+          (debug " more than one argument, needs beta network")
+          (apply hash-map (interleave args (repeat predicate))))))
+    (catch RuntimeException e
+      (debug " threw non fatal" e))))
+
 (defn match-wme [c wm]
   (if (resolve (first c))
-    (try
-      (debug "predicate" c wm)
-      (let [args (all-vars c)
-            predicate (predicate-for c)]
-        (if (= 1 (count args))
-          (when (predicate wm)
-            (debug " evaluated to true")
-            {(first args) wm})
-          (do
-            (debug " more than one argument, needs beta network")
-            (apply hash-map (interleave args (repeat predicate))))))
-      (catch RuntimeException e
-        (debug " threw non fatal" e)))
+    (match-using-predicate c wm)
     (loop [[v & vs] wm [t & ts] c m {}]
       (if v
         (condp some [t]
