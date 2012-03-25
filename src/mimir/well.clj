@@ -228,9 +228,13 @@
 (defn reset []
   (reset! *net* (create-net)))
 
+(defn version []
+  (-> "project.clj" clojure.java.io/resource
+      slurp read-string (nth 2)))
+
 (defn -main [& args]
   (println)
-  (println "Welcome to Mímir |" (-> "project.clj" slurp read-string (nth 2)) "| Copyright © 2012 Håkan Råberg")
+  (println "Welcome to Mímir |" (version) "| Copyright © 2012 Håkan Råberg")
   (println)
   (require 'clojure.main)
   (clojure.main/repl :init #(in-ns 'mimir.well)))
