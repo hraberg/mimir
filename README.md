@@ -1,4 +1,4 @@
-[<img width="154" src=https://github.com/hraberg/mimir/raw/master/resources/mimer.jpg alt="Mímir - Copyright © Peter Madsen" title="Mímir - Copyright © Peter Madsen" align="right" />](http://www.petermadsen.info/pages/vh/hv-er-hv/mimir.html)
+[<img width="154" src=https://github.com/hraberg/mimir/raw/master/resources/mimer.jpg alt="Mímir - Image Copyright © Peter Madsen" title="Mímir - Image Copyright © Peter Madsen" align="right" />](http://www.petermadsen.info/pages/vh/hv-er-hv/mimir.html)
 
 # Mímir
 
@@ -6,7 +6,7 @@
 
 ### Mímir is an experimental rule engine written in Clojure.
 
-Mímir aims to implement a Rete network as a base. I don't vouch for its correctness, soundness or anything - actually. Like Mimer surely would attest, using it would be somewhat headless. Here's how it looks:
+Mímir aims to implement a Rete network as a base. I don't vouch for its correctness, soundness or anything, actually. Like Mímir surely would attest, using it would be somewhat headless. Here's how it looks:
 
 ```clojure
   (facts B1 on B2
@@ -40,7 +40,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 
 ### Notes
 
-The letter `í` in Mímer can conveniently be typed using `C-x 8 ' i` in Emacs.
+The letter `í` in Mímir can conveniently be typed using `C-x 8 ' i` in Emacs.
 
 
 ## License
@@ -49,6 +49,6 @@ Mímir, Copyright © 2012 Håkan Råberg
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-Mimer image from [Valhalla Comics](www.valhalla-comics.dk) Copyright © [Peter Madsen](http://www.petermadsen.info/)
+Mimir image from [Valhalla Comics](www.valhalla-comics.dk) Copyright © [Peter Madsen](http://www.petermadsen.info/)
 
 ᚠᚢᚦᚬᚱᚴ
