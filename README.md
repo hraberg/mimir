@@ -51,6 +51,6 @@ Mímir, Copyright © 2012 Håkan Råberg
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-Mimir image from [Valhalla Comics](www.valhalla-comics.dk) Copyright © [Peter Madsen](http://www.petermadsen.info/)
+Mimir image from [Valhalla Comics](http://www.valhalla-comics.dk) Copyright © [Peter Madsen](http://www.petermadsen.info/)
 
 ᚠᚢᚦᚬᚱᚴ
