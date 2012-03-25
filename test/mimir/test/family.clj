@@ -1,5 +1,5 @@
 (ns mimir.test.family
-  (:use [mimir.well :only (rule facts *net*)]
+  (:use [mimir.well :only (rule facts working-memory)]
         [mimir.test.common]
         [clojure.test]))
 
@@ -46,4 +46,4 @@
   (match? Socrates is mortal)
 
   (is (= '#{(Socrates is human)
-            (Socrates is mortal)} (:wm @*net*))))
+            (Socrates is mortal)} (working-memory))))

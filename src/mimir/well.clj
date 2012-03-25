@@ -7,14 +7,14 @@
 
 (defn create-net []
   {:productions #{}
-   :wm #{}
+   :working-memory #{}
    :predicates {}
    :alpha-network {}
    :beta-join-nodes {}})
 
 (def ^:dynamic *net* (atom (create-net)))
 
-(defn wm [] (:wm @*net*))
+(defn working-memory [] (:working-memory @*net*))
 
 (defn triplets
   ([x] (triplets x identity))
@@ -50,7 +50,7 @@
         lhs (triplets lhs)
         rhs (triplets rhs expand-rhs)]
     `(let [f# (defn ~name
-                ([] (~name (wm)))
+                ([] (~name (working-memory)))
                 ([~'wm]
                    (debug "rule" '~name)
                    (doall
@@ -115,9 +115,9 @@
         m))))
 
 (defn fact [fact]
-  (when-not (contains? (wm) fact)
+  (when-not (contains? (working-memory) fact)
     (debug "asserting fact" fact)
-    (swap! *net* update-in [:wm] conj fact)
+    (swap! *net* update-in [:working-memory] conj fact)
     (doseq [c (keys (:alpha-network @*net*))
             :let [match (match-wme c fact)]
             :when match]
@@ -135,7 +135,7 @@
   `(facts ~@wms))
 
 (defn matching-wmes
-  ([c] (matching-wmes c (wm)))
+  ([c] (matching-wmes c (working-memory)))
   ([c wm]
      (debug "condition" c)
      (->> wm
@@ -148,7 +148,7 @@
     (matching-wmes c wm)))
 
 (defn alpha-memory
-  ([c] (alpha-memory c (wm)))
+  ([c] (alpha-memory c (working-memory)))
   ([c wm]
      (let [vars-by-index (vars-by-index c)]
        (->> (alpha-network-lookup (with-index-vars c) wm)
@@ -211,12 +211,12 @@
   ([] (run *net*))
   ([net]
      (binding [*net* net]
-       (let [{:keys [wm productions]} @net]
+       (let [{:keys [working-memory productions]} @net]
          (union (->> productions
-                     (mapcat #(% wm))
+                     (mapcat #(% working-memory))
                      (map #(%))
                      set)
-                (when (seq (difference (:wm @*net*) wm))
+                (when (seq (difference (:working-memory @*net*) working-memory))
                   (run *net*)))))))
 
 (defmacro match? [& expected]
