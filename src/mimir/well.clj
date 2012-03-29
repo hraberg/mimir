@@ -24,6 +24,9 @@
            (cons (post-fn (cons x (take 2 xs)))
                  (triplets (drop 2 xs) post-fn))))))
 
+(defn triplet? [x]
+  (and (sequential? x) (= 3 (count x))))
+
 (defn is-var? [x]
   (and (symbol? x)
        (boolean (re-find #"^(\?.+|<.+>)$" (name x)))))
@@ -110,15 +113,18 @@
       (debug " threw non fatal" e))))
 
 (defn match-wme [c wm]
-  (if (resolve (first c))
-    (match-using-predicate c wm)
-    (loop [[v & vs] wm [t & ts] c m {}]
-      (if v
-        (condp some [t]
-          #{v} (recur vs ts m)
-          is-var? (recur vs ts (assoc m t v))
-          nil)
-        m))))
+  (condp some [c]
+    (comp
+     resolve
+     first) (match-using-predicate c wm)
+     triplet? (loop [[v & vs] wm [t & ts] c m {}]
+                (if v
+                  (condp some [t]
+                    #{v} (recur vs ts m)
+                    is-var? (recur vs ts (assoc m t v))
+                    nil)
+                  m))
+     (= c wm)))
 
 (defn fact [fact]
   (when-not (contains? (working-memory) fact)
