@@ -33,10 +33,7 @@
                       (not (is-var? %))) (list 'quote %) %) rhs))
 
 (defn vars [x]
-  (set (filter is-var? x)))
-
-(defn all-vars [x]
-  (-> x flatten vars vec))
+  (->> x flatten (filter is-var?) vec))
 
 (defn quote-fact [t]
   (list 'quote t))
@@ -55,7 +52,7 @@
                    (debug "rule" '~name)
                    (doall
                     (for [vars# (check-rule '~(vec lhs) ~'wm)
-                          :let [{:syms ~(all-vars rhs)} vars#]]
+                          :let [{:syms ~(vars rhs)} vars#]]
                       #(do
                          (debug "rhs" vars#)
                          ~@rhs)))))]
@@ -77,24 +74,30 @@
          (get-in @*net* ['~cache-name key#])))))
 
 (defn join-on [x y]
-  (intersection (set (all-vars x)) (set (all-vars y))))
+  (intersection (set (vars x)) (set (vars y))))
+
+(defn var-sym [x]
+  (symbol (str "?" x)))
 
 (defn vars-by-index [c]
-  (->> c (filter is-var?)
-       (map-indexed #(vector (symbol (str "?" (inc %1)))  %2))
+  (->> c vars
+       (map-indexed #(vector (var-sym (inc %1)) %2))
        (into {})))
 
 (defn with-index-vars [c]
-  (replace (map-invert (vars-by-index c)) c))
+  (let [index (atom 0)]
+    (postwalk #(if (is-var? %)
+                 (var-sym (swap! index inc))
+                 %) c)))
 
 (defn predicate-for [c]
   (with-cache predicates c
-    (eval `(fn ~(all-vars c) ~c))))
+    (eval `(fn ~(vars c) ~c))))
 
 (defn match-using-predicate [c wm]
   (try
     (debug "predicate" c wm)
-    (let [args (all-vars c)
+    (let [args (vars c)
           predicate (predicate-for c)]
       (if (= 1 (count args))
         (when (predicate wm)
