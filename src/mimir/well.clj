@@ -266,8 +266,8 @@
     (with-cache beta-join-nodes [c1-am c2-am]
       (let [join-on (join-on (-> c1-am first keys) c2)]
         (debug "join" join-on)
-        (debug " left" (ellipsis c1-am))
-        (debug "right" (ellipsis c2-am))
+        (debug "  left" (ellipsis c1-am))
+        (debug " right" (ellipsis c2-am))
         (let [result (cond
                       (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
                       (empty? join-on) (cross c1-am c2-am)
