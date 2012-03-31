@@ -25,9 +25,9 @@
         (> ?s 0)
         (= ?m 1)
 
-        (== (+ (coef ?s ?e ?n ?d)
-               (coef ?m ?o ?r ?e))
-            (coef ?m ?o ?n ?e ?y))
+        (= (+ (coef ?s ?e ?n ?d)
+              (coef ?m ?o ?r ?e))
+           (coef ?m ?o ?n ?e ?y))
 
         =>
 

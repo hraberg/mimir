@@ -96,7 +96,7 @@
   (->> (var-to-index c) vals sort vec))
 
 (defn predicate-for [c]
-  (with-cache predicate [c *ns*]
+  (with-cache predicate c
     (let [args (ordered-vars c)
           src `(fn ~args ~c)]
       (with-meta (eval src) {:src src}))))
@@ -227,8 +227,8 @@
           (fn [m]
             (let [real-args (replace (select-keys m join-on) args)
                   unbound-vars (filter is-var? real-args)]
-              (for [wm permutated-wm
-                    :let [vars (apply hash-map (interleave unbound-vars wm))
+              (for [wmes permutated-wm
+                    :let [vars (apply hash-map (interleave unbound-vars wmes))
                           expanded-args (replace vars real-args)]]
                 (try
                   (when (apply pred expanded-args)
