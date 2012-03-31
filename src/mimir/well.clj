@@ -118,18 +118,21 @@
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
+(defn match-triplet [c wme]
+  (loop [[v & vs] wme [t & ts] c m {}]
+    (if v
+      (condp some [t]
+        #{v} (recur vs ts m)
+        is-var? (recur vs ts (assoc m t v))
+        nil)
+      m)))
+
 (defn match-wme [c wme]
   (condp some [c]
     (comp
      resolve
      first) (match-using-predicate c wme)
-     triplet? (loop [[v & vs] wme [t & ts] c m {}]
-                (if v
-                  (condp some [t]
-                    #{v} (recur vs ts m)
-                    is-var? (recur vs ts (assoc m t v))
-                    nil)
-                  m))
+     triplet? (match-triplet c wme)
      (= c wme)))
 
 (defn fact [fact]
