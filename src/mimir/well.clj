@@ -48,7 +48,8 @@
 (defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
-     (str (seq (take n x)) (when (< n (count x)) "..."))))
+     (str (seq (take n x)) (when (< n (count x))
+                             (str " ...  [total: " (count x) "]")))))
 
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
@@ -243,7 +244,7 @@
     (debug "multi-var-predicate" src)
     (debug "args" args)
     (debug "known args" join-on "- need to find" (count needed-args))
-    (debug "permutations of wm" (count permutated-wm) ":" (ellipsis permutated-wm))
+    (debug "permutations of wm" (ellipsis permutated-wm))
     (mapcat
      (fn [m]
        (let [known-args (select-keys m join-on)
@@ -259,14 +260,14 @@
 (defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
     (with-cache beta-join-nodes [c1-am c2-am]
-      (debug "join" (ellipsis c1-am) (ellipsis c2-am) join-on)
-      (let [join-on (join-on (-> c1-am first keys) c2)
-            result (cond
-                    (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
-                    (empty? join-on) (cross c1-am c2-am)
-                    :else (join c1-am c2-am join-on))] ; (clojure.set/join c1-am c2-am)
-        (debug "result" (ellipsis result))
-        result))))
+      (let [join-on (join-on (-> c1-am first keys) c2)]
+        (debug "join" (ellipsis c1-am) (ellipsis c2-am) join-on)
+        (let [result (cond
+                      (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
+                      (empty? join-on) (cross c1-am c2-am)
+                      :else (join c1-am c2-am join-on))] ; (clojure.set/join c1-am c2-am)
+          (debug "result" (ellipsis result))
+          result)))))
 
 (defn check-rule
   ([cs wm]
