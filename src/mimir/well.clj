@@ -219,7 +219,7 @@
         args (-> c2-am first meta :args)
         src (-> pred meta :src)
         permutated-wm (permutations (- (count args) (count join-on)) (working-memory))]
-    (debug "multi-var-preducate " src)
+    (debug "multi-var-predicate " src)
     (debug "args " args)
     (debug "perm-wm" (take 5 permutated-wm) "...")
     (->> c1-am
