@@ -229,10 +229,12 @@
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
         src (-> pred meta :src)
-        permutated-wm (permutations (- (count args) (count join-on)) (working-memory))]
-    (debug "multi-var-predicate " src)
-    (debug "args " args)
-    (debug "perm-wm" (take 5 permutated-wm) "...")
+        needed-args (- (count args) (count join-on))
+        permutated-wm (permutations needed-args (working-memory))]
+    (debug "multi-var-predicate" src)
+    (debug "args" args)
+    (debug "known args" join-on "- need to find" needed-args)
+    (debug "permutations of wm" (count permutated-wm) ":" (take 5 permutated-wm) "...")
     (->> c1-am
          (mapcat
           (fn [m]
