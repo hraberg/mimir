@@ -1,6 +1,6 @@
 (ns mimir.well
   (:use [clojure.set :only (intersection map-invert rename-keys difference union)]
-        [clojure.tools.logging :only (debug info warn error)]
+        [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)])
   (:refer-clojure :exclude [assert])
   (:gen-class))
@@ -45,6 +45,11 @@
 (defn expand-rhs [t]
   (cons 'mimir.well/assert t))
 
+(defn ellipsis
+  ([x] (ellipsis 5 x))
+  ([n x]
+     (str (seq (take n x)) (when (< n (count x)) "..."))))
+
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
@@ -69,11 +74,11 @@
 (defmacro defrule [name & body]
   `(rule ~name ~@body))
 
-(defmacro with-cache [cache-name key f]
+(defmacro with-cache [cache-name key & f]
   (let [cache-name (keyword cache-name)]
     `(let [key# ~key]
        (if-not (contains? ('~cache-name @*net*) key#)
-         (let [v# ~f]
+         (let [v# (do ~@f)]
            (swap! *net* assoc-in ['~cache-name key#] v#)
            v#)
          (get-in @*net* ['~cache-name key#])))))
@@ -189,12 +194,10 @@
   (sort-by first (map #(list (join-key % join-on) %) x)))
 
 (defn join [left right join-on]
-  (debug "join")
   (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
     (loop [[[lk lv] & l-rst :as l] left
            [[rk rv] & r-rst :as r] right
            acc #{}]
-      (debug "joining" lk rk lv rv)
       (if-not (and lk rk)
         acc
         (condp some [(compare lk rk)]
@@ -203,11 +206,10 @@
           (recur l-rst r-rst (conj acc (merge lv rv))))))))
 
 (defn cross [left right]
-  (let [cross (into #{}
-                    (for [x left y right]
-                      (merge x y)))]
-    (debug "nothing to join on, treating as or" cross)
-    cross))
+  (debug "nothing to join on, treating as or")
+  (into #{}
+        (for [x left y right]
+          (merge x y))))
 
 (defn multi-var-predicate-node? [am]
   (if (and (seq? am) (= 1 (count am)))
@@ -245,7 +247,7 @@
     (debug "multi-var-predicate" src)
     (debug "args" args)
     (debug "known args" join-on "- need to find" (count needed-args))
-    (debug "permutations of wm" (count permutated-wm) ":" (take 5 permutated-wm) "...")
+    (debug "permutations of wm" (count permutated-wm) ":" (ellipsis permutated-wm))
     (mapcat
      (fn [m]
        (let [known-args (select-keys m join-on)
@@ -261,12 +263,14 @@
 (defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
     (with-cache beta-join-nodes [c1-am c2-am]
-      (let [join-on (join-on (-> c1-am first keys) c2)]
-        (debug "join" c1-am c2-am join-on)
-        (cond
-         (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
-         (empty? join-on) (cross c1-am c2-am)
-         :else (join c1-am c2-am join-on)))))) ; (clojure.set/join c1-am c2-am)
+      (debug "join" (ellipsis c1-am) (ellipsis c2-am) join-on)
+      (let [join-on (join-on (-> c1-am first keys) c2)
+            result (cond
+                    (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
+                    (empty? join-on) (cross c1-am c2-am)
+                    :else (join c1-am c2-am join-on))] ; (clojure.set/join c1-am c2-am)
+        (debug "result" (ellipsis result))
+        result))))
 
 (defn check-rule
   ([cs wm]
