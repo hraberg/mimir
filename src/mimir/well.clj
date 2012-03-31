@@ -97,7 +97,9 @@
 
 (defn predicate-for [c]
   (with-cache predicate [c *ns*]
-    (eval `(fn ~(ordered-vars c) ~c))))
+    (let [args (ordered-vars c)
+          src `(fn ~args ~c)]
+      (with-meta (eval src) {:src src}))))
 
 (defn match-using-predicate [c wm]
   (try
@@ -114,19 +116,19 @@
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
-(defn match-wme [c wm]
+(defn match-wme [c wme]
   (condp some [c]
     (comp
      resolve
-     first) (match-using-predicate c wm)
-     triplet? (loop [[v & vs] wm [t & ts] c m {}]
+     first) (match-using-predicate c wme)
+     triplet? (loop [[v & vs] wme [t & ts] c m {}]
                 (if v
                   (condp some [t]
                     #{v} (recur vs ts m)
                     is-var? (recur vs ts (assoc m t v))
                     nil)
                   m))
-     (= c wm)))
+     (= c wme)))
 
 (defn fact [fact]
   (when-not (contains? (working-memory) fact)
@@ -213,10 +215,11 @@
          (filter all-different?))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
-  (debug "multi-var-join")
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
+        src (-> pred meta :src)
         permutated-wm (permutations (- (count args) (count join-on)) (working-memory))]
+    (debug "multi-var-preducate " src)
     (debug "args " args)
     (debug "perm-wm" (take 5 permutated-wm) "...")
     (->> c1-am
