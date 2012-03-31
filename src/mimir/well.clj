@@ -198,6 +198,7 @@
   (sort-by first (map #(list (join-key % join-on) %) x)))
 
 (defn join [left right join-on]
+  (debug " triplet join")
   (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
     (loop [[[lk lv] & l-rst :as l] left
            [[rk rv] & r-rst :as r] right
@@ -210,7 +211,7 @@
           (recur l-rst r-rst (conj acc (merge lv rv))))))))
 
 (defn cross [left right]
-  (debug "nothing to join on, treating as or")
+  (debug " nothing to join on, treating as or")
   (into #{}
         (for [x left y right]
           (merge x y))))
@@ -244,10 +245,10 @@
         src (-> pred meta :src)
         needed-args (remove join-on args)
         permutated-wm (permutations (count needed-args) (working-memory))]
-    (debug "multi-var-predicate" src)
-    (debug "args" args)
-    (debug "known args" join-on "- need to find" (count needed-args))
-    (debug "permutations of wm" (ellipsis permutated-wm))
+    (debug " multi-var-predicate")
+    (debug " args" args)
+    (debug " known args" join-on "- need to find" (count needed-args))
+    (debug " permutations of wm" (ellipsis permutated-wm))
     (mapcat
      (fn [m]
        (let [known-args (select-keys m join-on)
