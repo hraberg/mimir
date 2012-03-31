@@ -119,13 +119,16 @@
       (debug " threw non fatal" e))))
 
 (defn match-triplet [c wme]
+  (debug "triplet" c wme)
   (loop [[v & vs] wme [t & ts] c m {}]
     (if v
       (condp some [t]
         #{v} (recur vs ts m)
         is-var? (recur vs ts (assoc m t v))
         nil)
-      m)))
+      (do
+        (debug " evaluated to true")
+        m))))
 
 (defn predicate? [c]
   (-> c first resolve boolean))
@@ -261,7 +264,9 @@
   (let [c2-am (alpha-memory c2 wm)]
     (with-cache beta-join-nodes [c1-am c2-am]
       (let [join-on (join-on (-> c1-am first keys) c2)]
-        (debug "join" (ellipsis c1-am) (ellipsis c2-am) join-on)
+        (debug "join" join-on)
+        (debug " left" (ellipsis c1-am))
+        (debug "right" (ellipsis c2-am))
         (let [result (cond
                       (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
                       (empty? join-on) (cross c1-am c2-am)
