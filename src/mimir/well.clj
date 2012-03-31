@@ -129,11 +129,12 @@
 
 (defn match-wme [c wme]
   (condp some [c]
+    #{wme} wme
     (comp
      resolve
      first) (match-using-predicate c wme)
      triplet? (match-triplet c wme)
-     (= c wme)))
+     nil))
 
 (defn fact [fact]
   (when-not (contains? (working-memory) fact)
