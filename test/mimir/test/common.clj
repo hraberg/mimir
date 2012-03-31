@@ -7,7 +7,7 @@
   (when expected
     `(is (= (set ~(vec (triplets expected quote-fact))) (set (run))))))
 
-(defmacro in-match? [& expected]
+(defmacro matches? [& expected]
   (when expected
     `(is (subset? ~(set expected) (set (run))))))
 

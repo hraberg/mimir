@@ -1,5 +1,5 @@
 (ns mimir.test.arithmetic
-  (:use [mimir.well :only (rule run fact facts)]
+  (:use [mimir.well :only (rule run fact facts all-different?)]
         [mimir.test.common]
         [clojure.test]))
 
@@ -16,7 +16,7 @@
         =>
         (str ?x '+ ?y '= ?z))
 
-  (in-match? "2+4=6"))
+  (matches? "2+4=6"))
 
 (deftest send-more-money
   (with-integers)
@@ -29,9 +29,11 @@
               (coef ?m ?o ?r ?e))
            (coef ?m ?o ?n ?e ?y))
 
+        (all-different? ?s ?e ?n ?d ?m ?o ?r ?y)
+
         =>
 
         (str ?s ?e ?n ?d '+ ?m ?o ?r ?e '= ?m ?o ?n ?e ?y))
 
-   (time (in-match? "9563+1095=10658")))
+   (time (match? "9567+1085=10652")))
 

@@ -20,7 +20,9 @@
   ([x] (triplets x identity))
   ([[x & xs] post-fn]
      (when x
-       (if (sequential? x) (cons x (triplets xs post-fn))
+       (if ((some-fn
+             sequential?
+             string?) x) (cons x (triplets xs post-fn))
            (cons (post-fn (cons x (take 2 xs)))
                  (triplets (drop 2 xs) post-fn))))))
 
@@ -103,12 +105,12 @@
 
 (defn match-using-predicate [c wm]
   (try
-    (debug "predicate" c wm)
-    (let [args (ordered-vars c)
-          predicate (predicate-for c)]
+    (debug "predicate" c)
+    (let [predicate (predicate-for c)
+          args (ordered-vars c)]
       (if (= 1 (count args))
         (when (predicate wm)
-          (debug " evaluated to true")
+          (debug " evaluated to true for " wm)
           {(first args) wm})
         (do
           (debug " more than one argument, needs beta network")
@@ -204,7 +206,7 @@
     (fn? (-> c2-am first first val))
     false))
 
-(defn all-different? [xs]
+(defn all-different? [& xs]
   (= xs (distinct xs)))
 
 (defn permutations [n coll]
@@ -212,7 +214,7 @@
     '(())
     (->> (permutations (dec n) coll)
          (mapcat #(map (partial conj %) coll))
-         (filter all-different?))))
+         (filter #(apply all-different? %)))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
   (let [pred (-> c2-am first first val)
