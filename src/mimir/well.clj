@@ -30,8 +30,7 @@
   (and (sequential? x) (= 3 (count x))))
 
 (defn is-var? [x]
-  (and (symbol? x)
-       (boolean (re-find #"^(\?.+|<.+>)$" (name x)))))
+  (and (symbol? x) (.startsWith (name x) "?")))
 
 (defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
@@ -225,6 +224,18 @@
          (mapcat #(map (partial conj %) coll))
          (filter #(apply all-different? %)))))
 
+(defn ^:private build-args [base wmes]
+  (let [n (count wmes)
+        wmes (vec wmes)]
+    (loop [idx-base 0
+           idx-wmes 0
+           base base]
+      (if (= idx-wmes n)
+        base
+        (if (is-var? (base idx-base))
+          (recur (inc idx-base) (inc idx-wmes) (assoc base idx-base (wmes idx-wmes)))
+          (recur (inc idx-base) idx-wmes base))))))
+
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
@@ -235,19 +246,17 @@
     (debug "args" args)
     (debug "known args" join-on "- need to find" (count needed-args))
     (debug "permutations of wm" (count permutated-wm) ":" (take 5 permutated-wm) "...")
-    (->> c1-am
-         (mapcat
-          (fn [m]
-            (let [real-args (replace (select-keys m join-on) args)]
-              (for [wmes permutated-wm
-                    :let [vars (zipmap needed-args wmes)
-                          expanded-args (replace vars real-args)]]
-                (try
-                  (when (apply pred expanded-args)
-                    (merge m vars))
-                  (catch RuntimeException e
-                    (debug " threw non fatal" e)))))))
-         (remove nil?))))
+    (mapcat
+     (fn [m]
+       (let [known-args (select-keys m join-on)
+             real-args (replace known-args args)]
+         (for [wmes permutated-wm
+               :when (try
+                       (apply pred (build-args real-args wmes))
+                       (catch RuntimeException e
+                         (debug " threw non fatal" e)))]
+           (merge m (zipmap needed-args wmes)))))
+     c1-am)))
 
 (defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
