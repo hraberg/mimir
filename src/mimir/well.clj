@@ -274,11 +274,14 @@
           (debug "result" (ellipsis result))
           result)))))
 
+(defn dummy-beta-join-node [c wm]
+  (beta-join-node '() c #{{}} wm))
+
 (defn check-rule
   ([cs wm]
      (debug "conditions" cs)
      (loop [[c1 & cs] cs
-            matches (beta-join-node '() c1 #{{}} wm)]
+            matches (dummy-beta-join-node c1 wm)]
        (if-not cs
          matches
          (let [c2 (first cs)]
