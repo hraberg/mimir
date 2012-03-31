@@ -112,7 +112,7 @@
           {(first args) wm})
         (do
           (debug " more than one argument, needs beta network")
-          (with-meta (apply hash-map (interleave args (repeat predicate))) {:args args}))))
+          (with-meta (zipmap args (repeat predicate)) {:args args}))))
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
@@ -228,7 +228,7 @@
             (let [real-args (replace (select-keys m join-on) args)
                   unbound-vars (filter is-var? real-args)]
               (for [wmes permutated-wm
-                    :let [vars (apply hash-map (interleave unbound-vars wmes))
+                    :let [vars (zipmap unbound-vars wmes)
                           expanded-args (replace vars real-args)]]
                 (try
                   (when (apply pred expanded-args)
