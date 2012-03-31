@@ -106,11 +106,10 @@
 (defn match-using-predicate [c wme]
   (try
     (debug "predicate" c wme)
-    (let [predicate (predicate-for c)
-          args (ordered-vars c)]
+    (let [predicate (predicate-for c)]
       (when (predicate wme)
         (debug " evaluated to true")
-        {(first args) wme}))
+        {'?1 wme}))
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
@@ -134,18 +133,18 @@
     (debug " more than one argument, needs beta network")
     (with-meta (zipmap args (repeat (predicate-for c))) {:args args})))
 
-(defn match-wme-fn [c]
+(defn match-wme [c wme]
   (condp some [c]
-    predicate? (partial match-using-predicate c)
-    triplet? (partial match-triplet c)
-    #{c}))
+    predicate? (match-using-predicate c wme)
+    triplet? (match-triplet c wme)
+    nil))
 
 (defn fact [fact]
   (when-not (contains? (working-memory) fact)
     (debug "asserting fact" fact)
     (swap! *net* update-in [:working-memory] conj fact)
     (doseq [c (keys (:alpha-network @*net*))
-            :let [match ((match-wme-fn c) fact)]
+            :let [match (match-wme c fact)]
             :when match]
       (debug "inserting into alpha network" match)
       (swap! *net* update-in [:alpha-network] #(merge-with conj % {c match}))))
@@ -167,7 +166,7 @@
      (if (multi-var-predicate? c)
        #{(multi-var-predicate-placeholder c)}
        (->> wm
-            (map #((match-wme-fn c) %))
+            (map #(match-wme c %))
             (remove nil?)
             (set)))))
 
