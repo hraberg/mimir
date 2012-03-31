@@ -103,18 +103,14 @@
           src `(fn ~args ~c)]
       (with-meta (eval src) {:src src}))))
 
-(defn match-using-predicate [c wm]
+(defn match-using-predicate [c wme]
   (try
-    (debug "predicate" c)
+    (debug "predicate" c wme)
     (let [predicate (predicate-for c)
           args (ordered-vars c)]
-      (if (= 1 (count args))
-        (when (predicate wm)
-          (debug " evaluated to true for " wm)
-          {(first args) wm})
-        (do
-          (debug " more than one argument, needs beta network")
-          (with-meta (zipmap args (repeat predicate)) {:args args}))))
+      (when (predicate wme)
+        (debug " evaluated to true")
+        {(first args) wme}))
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
@@ -127,21 +123,29 @@
         nil)
       m)))
 
-(defn match-wme [c wme]
+(defn predicate? [c]
+  (-> c first resolve boolean))
+
+(defn multi-var-predicate? [c]
+  (and (predicate? c) (> (count (ordered-vars c)) 1)))
+
+(defn multi-var-predicate-placeholder [c]
+  (let [args (ordered-vars c)]
+    (debug " more than one argument, needs beta network")
+    (with-meta (zipmap args (repeat (predicate-for c))) {:args args})))
+
+(defn match-wme-fn [c]
   (condp some [c]
-    #{wme} wme
-    (comp
-     resolve
-     first) (match-using-predicate c wme)
-     triplet? (match-triplet c wme)
-     nil))
+    predicate? (partial match-using-predicate c)
+    triplet? (partial match-triplet c)
+    #{c}))
 
 (defn fact [fact]
   (when-not (contains? (working-memory) fact)
     (debug "asserting fact" fact)
     (swap! *net* update-in [:working-memory] conj fact)
     (doseq [c (keys (:alpha-network @*net*))
-            :let [match (match-wme c fact)]
+            :let [match ((match-wme-fn c) fact)]
             :when match]
       (debug "inserting into alpha network" match)
       (swap! *net* update-in [:alpha-network] #(merge-with conj % {c match}))))
@@ -160,10 +164,12 @@
   ([c] (matching-wmes c (working-memory)))
   ([c wm]
      (debug "condition" c)
-     (->> wm
-          (map #(match-wme c %))
-          (remove nil?)
-          (set))))
+     (if (multi-var-predicate? c)
+       #{(multi-var-predicate-placeholder c)}
+       (->> wm
+            (map #((match-wme-fn c) %))
+            (remove nil?)
+            (set)))))
 
 (defn alpha-network-lookup [c wm]
   (with-cache alpha-network c
@@ -205,9 +211,9 @@
     (debug "nothing to join on, treating as or" cross)
     cross))
 
-(defn multi-var-predicate? [c2-am]
-  (if (and (seq? c2-am) (= 1 (count c2-am)))
-    (fn? (-> c2-am first first val))
+(defn multi-var-predicate-node? [am]
+  (if (and (seq? am) (= 1 (count am)))
+    (fn? (-> am first first val))
     false))
 
 (defn all-different? [& xs]
@@ -249,7 +255,7 @@
       (let [join-on (join-on (-> c1-am first keys) c2)]
         (debug "join" c1-am c2-am join-on)
         (cond
-         (multi-var-predicate? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
+         (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
          (empty? join-on) (cross c1-am c2-am)
          :else (join c1-am c2-am join-on)))))) ; (clojure.set/join c1-am c2-am)
 
