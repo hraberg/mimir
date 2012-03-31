@@ -1,7 +1,7 @@
 (ns mimir.well
   (:use [clojure.set :only (intersection map-invert rename-keys difference union)]
         [clojure.tools.logging :only (debug info warn error)]
-        [clojure.walk :only (postwalk)])
+        [clojure.walk :only (postwalk postwalk-replace)])
   (:refer-clojure :exclude [assert])
   (:gen-class))
 
@@ -20,7 +20,7 @@
   ([x] (triplets x identity))
   ([[x & xs] post-fn]
      (when x
-       (if (seq? x) (cons x (triplets xs post-fn))
+       (if (sequential? x) (cons x (triplets xs post-fn))
            (cons (post-fn (cons x (take 2 xs)))
                  (triplets (drop 2 xs) post-fn))))))
 
@@ -52,9 +52,10 @@
     `(let [f# (defn ~name
                 ([] (~name (working-memory)))
                 ([~'wm]
-                   (debug "rule" '~name)
+                   (debug "rule" '~name '~*ns*)
                    (doall
-                    (for [vars# (check-rule '~(vec lhs) ~'wm)
+                    (for [vars# (binding [*ns* '~*ns*]
+                                  (check-rule '~(vec lhs) ~'wm))
                           :let [{:syms ~(vars rhs)} vars#]]
                       #(do
                          (debug "rhs" vars#)
@@ -82,25 +83,26 @@
 (defn var-sym [x]
   (symbol (str "?" x)))
 
-(defn vars-by-index [c]
-  (->> c vars
-       (map-indexed #(vector (var-sym (inc %1)) %2))
-       (into {})))
+(defn var-to-index [c]
+  (loop [[v & vs] (-> c vars flatten)
+         acc {}]
+    (if v
+      (recur vs (if (acc v)
+                  acc
+                  (assoc acc v (var-sym (inc (count acc))))))
+      acc)))
 
-(defn with-index-vars [c]
-  (let [index (atom 0)]
-    (postwalk #(if (is-var? %)
-                 (var-sym (swap! index inc))
-                 %) c)))
+(defn ordered-vars [c]
+  (->> (var-to-index c) vals sort vec))
 
 (defn predicate-for [c]
-  (with-cache predicates c
-    (eval `(fn ~(vars c) ~c))))
+  (with-cache predicate [c *ns*]
+    (eval `(fn ~(ordered-vars c) ~c))))
 
 (defn match-using-predicate [c wm]
   (try
     (debug "predicate" c wm)
-    (let [args (vars c)
+    (let [args (ordered-vars c)
           predicate (predicate-for c)]
       (if (= 1 (count args))
         (when (predicate wm)
@@ -108,7 +110,7 @@
           {(first args) wm})
         (do
           (debug " more than one argument, needs beta network")
-          (apply hash-map (interleave args (repeat predicate))))))
+          (with-meta (apply hash-map (interleave args (repeat predicate))) {:args args}))))
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
@@ -162,9 +164,10 @@
 (defn alpha-memory
   ([c] (alpha-memory c (working-memory)))
   ([c wm]
-     (let [vars-by-index (vars-by-index c)]
-       (->> (alpha-network-lookup (with-index-vars c) wm)
-            (map #(rename-keys % vars-by-index))))))
+     (let [var-to-index (var-to-index c)
+           vars-by-index (map-invert var-to-index)]
+       (->> (alpha-network-lookup (postwalk-replace var-to-index c) wm)
+            (map #(rename-keys (with-meta % (postwalk-replace vars-by-index (meta %))) vars-by-index))))))
 
 (defn join-key [x join-on]
   (when-let [keys (seq (select-keys x join-on))]
@@ -174,7 +177,7 @@
   (sort-by first (map #(list (join-key % join-on) %) x)))
 
 (defn join [left right join-on]
-  (debug "join" left right join-on)
+  (debug "join")
   (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
     (loop [[[lk lv] & l-rst :as l] left
            [[rk rv] & r-rst :as r] right
@@ -194,19 +197,58 @@
     (debug "nothing to join on, treating as or" cross)
     cross))
 
+(defn multi-var-predicate? [c2-am]
+  (if (and (seq? c2-am) (= 1 (count c2-am)))
+    (fn? (-> c2-am first first val))
+    false))
+
+(defn all-different? [xs]
+  (= xs (distinct xs)))
+
+(defn permutations [n coll]
+  (if (zero? n)
+    '(())
+    (->> (permutations (dec n) coll)
+         (mapcat #(map (partial conj %) coll))
+         (filter all-different?))))
+
+(defn deal-with-multi-var-predicates [c1-am c2-am join-on]
+  (debug "multi-var-join")
+  (let [pred (-> c2-am first first val)
+        args (-> c2-am first meta :args)
+        permutated-wm (let [c (- (count args) (count join-on))]
+                        (permutations c (working-memory)))]
+    (debug "args " args)
+    (debug "perm-wm" (take 5 permutated-wm) "...")
+    (remove nil?
+            (reduce into #{}
+                    (for [m c1-am
+                          :let [real-args (replace (select-keys m join-on) args)
+                                unbound-vars (filter is-var? real-args)]]
+                        (for [wm permutated-wm
+                              :let [vars (apply hash-map (interleave unbound-vars wm))
+                                    expanded-args (replace vars real-args)]]
+                          (try
+                            (when (apply pred expanded-args)
+                              (if (seq vars) (merge m vars) m))
+                            (catch RuntimeException e
+                              (debug " threw non fatal" e)))))))))
+
 (defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
     (with-cache beta-join-nodes [c1-am c2-am]
-      (let [join-on (join-on c1 c2)]
-        (if (empty? join-on)
-          (cross c1-am c2-am)
-          (join c1-am c2-am join-on)))))) ; (clojure.set/join c1-am c2-am)
+      (let [join-on (join-on (-> c1-am first keys) c2)]
+        (debug "join" c1-am c2-am join-on)
+        (cond
+         (multi-var-predicate? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
+         (empty? join-on) (cross c1-am c2-am)
+         :else (join c1-am c2-am join-on)))))) ; (clojure.set/join c1-am c2-am)
 
 (defn check-rule
   ([cs wm]
      (debug "conditions" cs)
      (loop [[c1 & cs] cs
-            matches (alpha-memory c1 wm)]
+            matches (beta-join-node '() c1 #{{}} wm)]
        (if-not cs
          matches
          (let [c2 (first cs)]

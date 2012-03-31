@@ -54,10 +54,11 @@
     "If somebody buys a CD writer, send them a free sample of CD-RW
     disks, catalog number 782321; but only if they're a repeat customer.
     We use a regular expression to match the CD writer's description."
-    (re-find #"CD Writer" (.description ?catalog-item))
+    (re-find #"CD Writer" (.description (cast CatalogItem ?catalog-item)))
     (= 782321 (.partNumber ?catalog-item-2))
-;    (= (.partNumber ?order-item) (.partNumber ?catalog-item))
-    (>  (.orderCount ?customer) 1)
+    (= (.partNumber (cast OrderItem ?order-item))
+       (.partNumber ?catalog-item))
+    (> (.orderCount ?customer) 1)
     =>
     (fact (Offer. "Free CD-RW disks" (.price ?catalog-item-2))))
 
