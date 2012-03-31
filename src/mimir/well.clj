@@ -216,23 +216,23 @@
   (debug "multi-var-join")
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
-        permutated-wm (let [c (- (count args) (count join-on))]
-                        (permutations c (working-memory)))]
+        permutated-wm (permutations (- (count args) (count join-on)) (working-memory))]
     (debug "args " args)
     (debug "perm-wm" (take 5 permutated-wm) "...")
-    (remove nil?
-            (reduce into #{}
-                    (for [m c1-am
-                          :let [real-args (replace (select-keys m join-on) args)
-                                unbound-vars (filter is-var? real-args)]]
-                        (for [wm permutated-wm
-                              :let [vars (apply hash-map (interleave unbound-vars wm))
-                                    expanded-args (replace vars real-args)]]
-                          (try
-                            (when (apply pred expanded-args)
-                              (if (seq vars) (merge m vars) m))
-                            (catch RuntimeException e
-                              (debug " threw non fatal" e)))))))))
+    (->> c1-am
+         (mapcat
+          (fn [m]
+            (let [real-args (replace (select-keys m join-on) args)
+                  unbound-vars (filter is-var? real-args)]
+              (for [wm permutated-wm
+                    :let [vars (apply hash-map (interleave unbound-vars wm))
+                          expanded-args (replace vars real-args)]]
+                (try
+                  (when (apply pred expanded-args)
+                    (merge m vars))
+                  (catch RuntimeException e
+                    (debug " threw non fatal" e)))))))
+         (remove nil?))))
 
 (defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
