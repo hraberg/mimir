@@ -249,10 +249,10 @@
     (mapcat
      (fn [m]
        (let [known-args (select-keys m join-on)
-             real-args (replace known-args args)]
+             base-args (replace known-args args)]
          (for [wmes permutated-wm
                :when (try
-                       (apply pred (build-args real-args wmes))
+                       (apply pred (build-args base-args wmes))
                        (catch RuntimeException e
                          (debug " threw non fatal" e)))]
            (merge m (zipmap needed-args wmes)))))
