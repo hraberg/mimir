@@ -20,8 +20,9 @@
 (defn with-integers []
   (->> (range 10) (map fact) doall))
 
-(defn coef [& [x & xs]]
-  (if x
-    (->> (Math/pow 10 (count xs)) (* x)
-         (+ (apply coef xs)) int)
-    0))
+(defn coef* [[x & xs]]
+  (when x
+    (cons `(* ~@(repeat (count xs) 10) ~x) (coef* xs))))
+
+(defmacro coef [& xs]
+  `(+ ~@(coef* xs)))
