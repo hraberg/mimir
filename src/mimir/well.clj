@@ -18,6 +18,8 @@
 
 (defn alpha-network [] (:alpha-network @*net*))
 
+(defn beta-join-nodes [] (:beta-join-nodes @*net*))
+
 (defn triplets
   ([x] (triplets x identity))
   ([[x & xs] post-fn]
