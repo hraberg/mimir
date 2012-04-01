@@ -166,19 +166,16 @@
       (swap! *net* update-in [:alpha-network] #(merge-with conj % {c match}))))
   fact)
 
-(defn retract*
-  ([fact]
-     (when (contains? (working-memory) fact)
-       (debug "retracting fact" fact)
-       (swap! *net* update-in [:working-memory] disj fact)
-       (doseq [c (keys (:alpha-network @*net*))
-               :let [match (match-wme c fact)]
-               :when match]
-         (debug "removing from alpha network" match)
-         (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
-     fact)
-  ([fact & facts]
-     (doall (cons (retract* fact) (map retract* facts)))))
+(defn retract* [fact]
+  (when (contains? (working-memory) fact)
+    (debug "retracting fact" fact)
+    (swap! *net* update-in [:working-memory] disj fact)
+    (doseq [c (keys (:alpha-network @*net*))
+            :let [match (match-wme c fact)]
+            :when match]
+      (debug "removing from alpha network" match)
+      (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
+  fact)
 
 (defmacro facts [& wms]
   (when wms

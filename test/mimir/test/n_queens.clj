@@ -24,7 +24,6 @@
   (chessboard 4)
 
   (rule four-queens
-
         (unique [?q1 ?q2 ?q3 ?q4])
 
         (not-same file?
