@@ -29,20 +29,20 @@
 
   (rule four-queens
 
-        (unique? ?N1 ?N2 ?N3 ?N4)
+        (unique? ?q1 ?q2 ?q3 ?q4)
 
         (no file?
-            ?N1 ?N2 ?N3 ?N4)
+            ?q1 ?q2 ?q3 ?q4)
 
         (no rank?
-            ?N1 ?N2 ?N3 ?N4)
+            ?q1 ?q2 ?q3 ?q4)
 
         (no diagonal?
-            ?N1 ?N2 ?N3 ?N4)
+            ?q1 ?q2 ?q3 ?q4)
 
         =>
 
-        (map file [?N1 ?N2 ?N3 ?N4]))
+        (map file [?q1 ?q2 ?q3 ?q4]))
 
   (match? [3 1 4 2]
           [2 4 1 3]))
