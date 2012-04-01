@@ -1,6 +1,7 @@
 (ns mimir.test.blocks
-  (:use [mimir.well :only (rule run facts fact retract working-memory)]
+  (:use [mimir.well :only (rule run facts fact retract working-memory alpha-network)]
         [mimir.test.common]
+        [clojure.set :only (difference)]
         [clojure.test]))
 
 (with-reset-fixture)
@@ -27,15 +28,19 @@
 
   ; retract irrelevant fact
   (retract B2 color blue)
-  (working-memory-size-is 9)
   (match? B1 is on-top)
 
   ; retract relevant fact
-  (retract B2 left-of B3)
-  (working-memory-size-is 8)
-  (no-matches?)
+  (let [an ((alpha-network) '(?1 left-of ?2))]
 
-  ; restate the fact
-  (facts B2 left-of B3)
-  (working-memory-size-is 9)
-  (match? B1 is on-top))
+    (retract B2 left-of B3)
+
+    (no-matches?)
+    (is (= '#{{?1 B2 ?2 B3}}
+           (difference an ((alpha-network) '(?1 left-of ?2)))))
+
+    ; restate the fact
+    (facts B2 left-of B3)
+
+    (match? B1 is on-top)
+    (is (= an ((alpha-network) '(?1 left-of ?2))))))

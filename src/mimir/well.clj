@@ -16,6 +16,8 @@
 
 (defn working-memory [] (:working-memory @*net*))
 
+(defn alpha-network [] (:alpha-network @*net*))
+
 (defn triplets
   ([x] (triplets x identity))
   ([[x & xs] post-fn]
@@ -170,7 +172,7 @@
        (doseq [c (keys (:alpha-network @*net*))
                :let [match (match-wme c fact)]
                :when match]
-         (debug "removing from alpha network" match)
+         (println "removing from alpha network" match)
          (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
      fact)
   ([fact & facts]
