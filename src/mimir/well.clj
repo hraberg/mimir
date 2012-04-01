@@ -249,6 +249,18 @@
 (defn unique? [& xs]
   (= xs (sort xs)))
 
+
+(defn same*
+  ([test pred xs]
+     (test (for [x xs y (remove #{x} xs)]
+             (pred x y)))))
+
+(defn not-same [pred & xs]
+  (same* (partial not-any? true?) pred xs))
+
+(defn same [pred & xs]
+  (same* (partial every? true?) pred xs))
+
 (defn permutations [n coll]
   (if (zero? n)
     '(())

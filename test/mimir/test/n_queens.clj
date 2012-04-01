@@ -1,5 +1,5 @@
 (ns mimir.test.n-queens
-  (:use [mimir.well :only (rule fact unique?)]
+  (:use [mimir.well :only (rule fact unique? not-same)]
         [mimir.test.common]
         [clojure.test]))
 
@@ -20,10 +20,6 @@
   (= (Math/abs (- (rank x) (rank y)))
      (Math/abs (- (file x) (file y)))))
 
-(defn no [pred & xs]
-  (not-any? true? (for [x xs y (remove #{x} xs)]
-                    (pred x y))))
-
 (deftest n-queens
   (chessboard 4)
 
@@ -31,14 +27,14 @@
 
         (unique? ?q1 ?q2 ?q3 ?q4)
 
-        (no file?
-            ?q1 ?q2 ?q3 ?q4)
+        (not-same file?
+                  ?q1 ?q2 ?q3 ?q4)
 
-        (no rank?
-            ?q1 ?q2 ?q3 ?q4)
+        (not-same rank?
+                  ?q1 ?q2 ?q3 ?q4)
 
-        (no diagonal?
-            ?q1 ?q2 ?q3 ?q4)
+        (not-same diagonal?
+                  ?q1 ?q2 ?q3 ?q4)
 
         =>
 
