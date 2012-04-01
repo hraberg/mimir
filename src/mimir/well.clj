@@ -66,12 +66,13 @@
         lhs (triplets lhs)
         rhs (triplets rhs expand-rhs)]
     `(let [f# (defn ~name
-                ([] (~name (working-memory)))
-                ([~'wm]
+                ([] (~name {}))
+                ([~'args] (map #(%) (~name (working-memory) ~'args)))
+                ([~'wm ~'args]
                    (debug "rule" '~name '~*ns*)
                    (doall
                     (for [vars# (binding [*ns* '~*ns*]
-                                  (check-rule '~(vec lhs) ~'wm))
+                                  (check-rule '~(vec lhs) ~'wm ~'args))
                           :let [{:syms ~(vars rhs)} vars#]]
                       #(do
                          (debug "rhs" vars#)
@@ -316,14 +317,16 @@
           (debug "result" (ellipsis result))
           result)))))
 
-(defn dummy-beta-join-node [c wm]
-  (beta-join-node '() c #{{}} wm))
+(defn dummy-beta-join-node [c wm args]
+  (beta-join-node '() c #{args} wm))
 
 (defn check-rule
-  ([cs wm]
+  ([cs wm] (check-rule cs wm {}))
+  ([cs wm args]
      (debug "conditions" cs)
+     (println "WM" wm)
      (loop [[c1 & cs] cs
-            matches (dummy-beta-join-node c1 wm)]
+            matches (dummy-beta-join-node c1 wm args)]
        (if-not cs
          matches
          (let [c2 (first cs)]
@@ -345,7 +348,7 @@
 
 (defn run-once [wm productions]
   (->> productions
-       (mapcat #(% wm))
+       (mapcat #(% wm {}))
        (map #(%))
        set))
 
