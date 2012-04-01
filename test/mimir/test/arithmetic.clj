@@ -6,7 +6,7 @@
 (with-reset-fixture)
 
 (deftest simple-arithmetic
-  (with-integers)
+  (integers)
 
   (rule xyz
         (< X Y)
@@ -19,7 +19,7 @@
   (matches? "2+4=6"))
 
 (deftest send-more-money
-  (with-integers)
+  (integers)
 
   (rule send-more-money
         (> S 0)
@@ -35,5 +35,4 @@
 
         (str S E N D '+ M O R E '= M O N E Y))
 
-   (time (match? "9567+1085=10652")))
-
+  (time (match? "9567+1085=10652")))

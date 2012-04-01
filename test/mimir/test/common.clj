@@ -17,7 +17,7 @@
 (defn with-reset-fixture []
   (use-fixtures :each (fn [f] (reset) (f) (reset))))
 
-(defn with-integers []
+(defn integers []
   (->> (range 10) (map fact) doall))
 
 (defn base* [base [x & xs]]
