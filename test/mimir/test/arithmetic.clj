@@ -1,5 +1,5 @@
 (ns mimir.test.arithmetic
-  (:use [mimir.well :only (rule run fact facts all-different?)]
+  (:use [mimir.well :only (rule run fact facts all-different)]
         [mimir.test.common]
         [clojure.test]))
 
@@ -29,7 +29,7 @@
                (base 10     M O R E))
             (= (base 10   M O N E Y)))
 
-        (all-different? S E N D M O R Y)
+        (all-different S E N D M O R Y)
 
         =>
 

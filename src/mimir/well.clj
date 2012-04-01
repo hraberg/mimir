@@ -25,8 +25,7 @@
   ([[x & xs] post-fn]
      (when x
        (if ((some-fn
-             sequential?
-             string?) x) (cons x (triplets xs post-fn))
+             sequential? map? set? string?) x) (cons x (triplets xs post-fn))
            (cons (post-fn (cons x (take 2 xs)))
                  (triplets (drop 2 xs) post-fn))))))
 
@@ -220,7 +219,7 @@
   (sort-by first (map #(list (join-key % join-on) %) x)))
 
 (defn join [left right join-on]
-  (debug " triplet join")
+  (debug " basic join")
   (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
     (loop [[[lk lv] & l-rst :as l] left
            [[rk rv] & r-rst :as r] right
@@ -243,12 +242,17 @@
     (fn? (-> am first first val))
     false))
 
-(defn all-different? [& xs]
+(defn all-different? [xs]
   (= xs (distinct xs)))
 
-(defn unique? [xs]
-  (= xs (sort xs)))
+(defn all-different [& xs]
+  (all-different? xs))
 
+(defn different [f & xs]
+  (all-different? (map f xs)))
+
+(defn unique [xs]
+  (= xs (sort xs)))
 
 (defn same*
   ([test pred xs]
@@ -266,7 +270,7 @@
     '(())
     (->> (permutations (dec n) coll)
          (mapcat #(map (partial conj %) coll))
-         (filter #(apply all-different? %)))))
+         (filter #(all-different? %)))))
 
 (defn ^:private build-args [base wmes]
   (loop [idx 0 wmes wmes base base]
@@ -308,7 +312,7 @@
         (let [result (cond
                       (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
                       (empty? join-on) (cross c1-am c2-am)
-                      :else (join c1-am c2-am join-on))] ; (clojure.set/join c1-am c2-am)
+                      :else (clojure.set/join c1-am c2-am)) ];(join c1-am c2-am join-on))] ; (clojure.set/join c1-am c2-am)
           (debug "result" (ellipsis result))
           result)))))
 
