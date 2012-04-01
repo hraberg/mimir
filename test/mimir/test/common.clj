@@ -20,9 +20,9 @@
 (defn with-integers []
   (->> (range 10) (map fact) doall))
 
-(defn coef* [[x & xs]]
+(defn base* [base [x & xs]]
   (when x
-    (cons `(* ~@(repeat (count xs) 10) ~x) (coef* xs))))
+    (cons `(* ~@(repeat (count xs) 10) ~x) (base* base xs))))
 
-(defmacro coef [& xs]
-  `(+ ~@(coef* xs)))
+(defmacro base [base & xs]
+  `(+ ~@(base* base xs)))

@@ -9,12 +9,12 @@
   (with-integers)
 
   (rule xyz
-        (< ?x ?y)
-        (> ?z 5)
-        (= ?z (+ ?x ?y))
-        (not= ?z ?y)
+        (< X Y)
+        (> Z 5)
+        (= Z (+ X Y))
+        (not= Z Y)
         =>
-        (str ?x '+ ?y '= ?z))
+        (str X '+ Y '= Z))
 
   (matches? "2+4=6"))
 
@@ -22,18 +22,18 @@
   (with-integers)
 
   (rule send-more-money
-        (> ?s 0)
-        (= ?m 1)
+        (> S 0)
+        (= M 1)
 
-        (= (+ (coef ?s ?e ?n ?d)
-              (coef ?m ?o ?r ?e))
-           (coef ?m ?o ?n ?e ?y))
+        (-> (+ (base 10     S E N D)
+               (base 10     M O R E))
+            (= (base 10   M O N E Y)))
 
-        (all-different? ?s ?e ?n ?d ?m ?o ?r ?y)
+        (all-different? S E N D M O R Y)
 
         =>
 
-        (str ?s ?e ?n ?d '+ ?m ?o ?r ?e '= ?m ?o ?n ?e ?y))
+        (str S E N D '+ M O R E '= M O N E Y))
 
    (time (match? "9567+1085=10652")))
 

@@ -30,7 +30,11 @@
   (and (sequential? x) (= 3 (count x))))
 
 (defn is-var? [x]
-  (and (symbol? x) (.startsWith (name x) "?")))
+  (if (symbol? x)
+    (let [s (name x)]
+      (or (.startsWith s "?")
+          (re-matches #"[A-Z]+" s)))
+    false))
 
 (defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)

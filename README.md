@@ -31,6 +31,26 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? B1 is on-top)
 ```
 
+```clojure
+  (with-integers)
+
+  (rule send-more-money
+        (> S 0)
+        (= M 1)
+
+        (-> (+ (base 10     S E N D)
+               (base 10     M O R E))
+            (= (base 10   M O N E Y)))
+
+        (all-different? S E N D M O R Y)
+
+        =>
+
+        (str S E N D '+ M O R E '= M O N E Y))
+
+   (time (match? "9567+1085=10652")))
+```
+
 
 ## References
 
