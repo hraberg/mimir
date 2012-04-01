@@ -48,7 +48,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 
         (str S E N D '+ M O R E '= M O N E Y))
 
-   (time (match? "9567+1085=10652")))
+   (match? "9567+1085=10652")
 ```
 
 
