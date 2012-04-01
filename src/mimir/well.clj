@@ -324,7 +324,6 @@
   ([cs wm] (check-rule cs wm {}))
   ([cs wm args]
      (debug "conditions" cs)
-     (println "WM" wm)
      (loop [[c1 & cs] cs
             matches (dummy-beta-join-node c1 wm args)]
        (if-not cs
