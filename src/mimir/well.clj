@@ -240,12 +240,12 @@
          (filter #(all-different? %)))))
 
 (defn ^:private build-args [base wmes]
-  (loop [idx 0 wmes wmes base base]
+  (loop [idx 0 wmes wmes base (transient base)]
     (if (seq wmes)
       (if (is-var? (base idx))
-        (recur (inc idx) (next wmes) (assoc base idx (first wmes)))
+        (recur (inc idx) (next wmes) (assoc! base idx (first wmes)))
         (recur (inc idx) wmes base))
-      base)))
+      (persistent! base))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
   (let [pred (-> c2-am first first val)
