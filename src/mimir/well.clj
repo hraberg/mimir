@@ -1,5 +1,5 @@
 (ns mimir.well
-  (:use [clojure.set :only (intersection map-invert rename-keys difference union)]
+  (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)])
   (:refer-clojure :exclude [assert])
@@ -218,7 +218,7 @@
 (defn prepare-join [x join-on]
   (sort-by first (map #(list (join-key % join-on) %) x)))
 
-(defn join [left right join-on]
+(defn sort-merge-join [left right join-on]
   (debug " basic join")
   (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
     (loop [[[lk lv] & l-rst :as l] left
@@ -312,7 +312,7 @@
         (let [result (cond
                       (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
                       (empty? join-on) (cross c1-am c2-am)
-                      :else (clojure.set/join c1-am c2-am)) ];(join c1-am c2-am join-on))] ; (clojure.set/join c1-am c2-am)
+                      :else (join c1-am c2-am))]
           (debug "result" (ellipsis result))
           result)))))
 
