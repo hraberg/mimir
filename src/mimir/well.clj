@@ -82,9 +82,6 @@
        (swap! *net* update-in [:productions] conj f#)
        f#)))
 
-(defmacro defrule [name & body]
-  `(rule ~name ~@body))
-
 (defmacro with-cache [cache-name key & f]
   (let [cache-name (keyword cache-name)]
     `(let [key# ~key]
@@ -155,36 +152,28 @@
     triplet? (match-triplet c wme)
     nil))
 
-(defn fact [fact]
-  (when-not (contains? (working-memory) fact)
-    (debug "asserting fact" fact)
-    (swap! *net* update-in [:working-memory] conj fact)
+(defn ^:private wm-crud [action test msg fact]
+  (when (test (working-memory) fact)
+    (debug msg " fact" fact)
+    (swap! *net* update-in [:working-memory] action fact)
     (doseq [c (keys (:alpha-network @*net*))
             :let [match (match-wme c fact)]
             :when match]
-      (debug "inserting into alpha network" match)
-      (swap! *net* update-in [:alpha-network] #(merge-with conj % {c match}))))
+      (debug " alpha network change" match)
+      (swap! *net* update-in [:alpha-network] #(merge-with action % {c match}))))
   fact)
 
+(defn fact [fact]
+  (wm-crud conj (complement contains?) "asserting" fact))
+
 (defn retract* [fact]
-  (when (contains? (working-memory) fact)
-    (debug "retracting fact" fact)
-    (swap! *net* update-in [:working-memory] disj fact)
-    (doseq [c (keys (:alpha-network @*net*))
-            :let [match (match-wme c fact)]
-            :when match]
-      (debug "removing from alpha network" match)
-      (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
-  fact)
+  (wm-crud disj contains? "retracting" fact))
 
 (defmacro facts [& wms]
   (when wms
     `(doall
       (for [wm# ~(vec (triplets wms quote-fact))]
         (fact wm#)))))
-
-(defmacro ! [& wms]
-  `(facts ~@wms))
 
 (defn matching-wmes
   ([c] (matching-wmes c (working-memory)))
@@ -208,26 +197,6 @@
            vars-by-index (map-invert var-to-index)]
        (->> (alpha-network-lookup (postwalk-replace var-to-index c) wm)
             (map #(rename-keys (with-meta % (postwalk-replace vars-by-index (meta %))) vars-by-index))))))
-
-(defn join-key [x join-on]
-  (when-let [keys (seq (select-keys x join-on))]
-    (apply vec keys)))
-
-(defn prepare-join [x join-on]
-  (sort-by first (map #(list (join-key % join-on) %) x)))
-
-(defn sort-merge-join [left right join-on]
-  (debug " basic join")
-  (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
-    (loop [[[lk lv] & l-rst :as l] left
-           [[rk rv] & r-rst :as r] right
-           acc #{}]
-      (if-not (and lk rk)
-        acc
-        (condp some [(compare lk rk)]
-          neg? (recur l-rst r acc)
-          pos? (recur l r-rst acc)
-          (recur l-rst r-rst (conj acc (merge lv rv))))))))
 
 (defn cross [left right]
   (debug " nothing to join on, treating as or")
@@ -359,12 +328,6 @@
            (if (seq (difference (working-memory) wm))
              (recur (working-memory) productions acc)
              acc))))))
-
-(defmacro match? [& expected]
-  `(= (set ~(vec (triplets expected quote-fact))) (set (run))))
-
-(defmacro ? [& expected]
-  `(match? ~@expected))
 
 (defn reset []
   (reset! *net* (create-net)))
