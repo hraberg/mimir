@@ -174,8 +174,7 @@
          (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
      fact)
   ([fact & facts]
-     (retract fact)
-     (doall (map retract facts))))
+     (doall (cons (retract fact) (map retract facts)))))
 
 (defmacro facts [& wms]
   (when wms
