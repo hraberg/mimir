@@ -25,7 +25,7 @@
 
   (rule four-queens
 
-        (unique? ?q1 ?q2 ?q3 ?q4)
+        (unique? [?q1 ?q2 ?q3 ?q4])
 
         (not-same file?
                   ?q1 ?q2 ?q3 ?q4)
@@ -42,3 +42,27 @@
 
   (match? [3 1 4 2]
           [2 4 1 3]))
+
+
+(deftest five-queens
+  (chessboard 5)
+
+  (rule five-queens
+
+        (not-same file?
+                  ?q1 ?q2 ?q3 ?q4 ?q5)
+
+        (not-same rank?
+                  ?q1 ?q2 ?q3 ?q4 ?q5)
+
+        (not-same diagonal?
+                  ?q1 ?q2 ?q3 ?q4 ?q5)
+
+        (unique? [?q1 ?q2 ?q3 ?q4 ?q5])
+
+        =>
+
+        (map file [?q1 ?q2 ?q3 ?q4 ?q5]))
+
+  (time (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
+                [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])))

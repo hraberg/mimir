@@ -56,8 +56,8 @@
 (defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
-     (str (seq (take n x)) (when (< n (count x))
-                             (str " ...  [total: " (count x) "]")))))
+     (str (seq (take n x))) (when (< n (count x))
+                              (str " ...  [total: " (count x) "]"))))
 
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
@@ -246,7 +246,7 @@
 (defn all-different? [& xs]
   (= xs (distinct xs)))
 
-(defn unique? [& xs]
+(defn unique? [xs]
   (= xs (sort xs)))
 
 
