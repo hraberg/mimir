@@ -162,7 +162,7 @@
       (swap! *net* update-in [:alpha-network] #(merge-with conj % {c match}))))
   fact)
 
-(defn retract
+(defn retract*
   ([fact]
      (when (contains? (working-memory) fact)
        (debug "retracting fact" fact)
@@ -174,7 +174,7 @@
          (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
      fact)
   ([fact & facts]
-     (doall (cons (retract fact) (map retract facts)))))
+     (doall (cons (retract* fact) (map retract* facts)))))
 
 (defmacro facts [& wms]
   (when wms
@@ -316,6 +316,12 @@
   ([id rel attr]
      `(assert ~(list id rel attr))))
 
+(defmacro retract
+  ([fact]
+     `(let [fact# (list ~@(quote-non-vars fact))]
+        (retract* fact#)))
+  ([id rel attr]
+     `(retract ~(list id rel attr))))
 
 (defn run-once [wm productions]
   (->> productions
