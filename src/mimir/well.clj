@@ -172,7 +172,7 @@
        (doseq [c (keys (:alpha-network @*net*))
                :let [match (match-wme c fact)]
                :when match]
-         (println "removing from alpha network" match)
+         (debug "removing from alpha network" match)
          (swap! *net* update-in [:alpha-network] #(merge-with disj % {c match}))))
      fact)
   ([fact & facts]
