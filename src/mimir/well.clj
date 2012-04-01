@@ -44,7 +44,9 @@
                       (not (is-var? %))) (list 'quote %) %) rhs))
 
 (defn vars [x]
-  (->> x flatten (filter is-var?) vec))
+  (let [vars (transient [])]
+    (postwalk #(when (is-var? %) (conj! vars %)) x)
+    (persistent! vars)))
 
 (defn quote-fact [t]
   (list 'quote t))
@@ -55,8 +57,8 @@
 (defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
-     (str (seq (take n x))) (when (< n (count x))
-                              (str " ...  [total: " (count x) "]"))))
+     (str (seq (take n x)) (when (< n (count x))
+                             (str " ...  [total: " (count x) "]")))))
 
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
@@ -98,7 +100,7 @@
   (symbol (str "?" x)))
 
 (defn var-to-index [c]
-  (loop [[v & vs] (-> c vars flatten)
+  (loop [[v & vs] (vars c)
          acc {}]
     (if v
       (recur vs (if (acc v)
@@ -117,16 +119,14 @@
 
 (defn match-using-predicate [c wme]
   (try
-    (debug "predicate" c wme)
     (let [predicate (predicate-for c)]
       (when (predicate wme)
-        (debug " evaluated to true")
+        (debug " evaluated to true" wme)
         {'?1 wme}))
     (catch RuntimeException e
       (debug " threw non fatal" e))))
 
 (defn match-triplet [c wme]
-  (debug "triplet" c wme)
   (loop [[v & vs] wme [t & ts] c m {}]
     (if v
       (condp some [t]
@@ -134,7 +134,7 @@
         is-var? (recur vs ts (assoc m t v))
         nil)
       (do
-        (debug " evaluated to true")
+        (debug " evaluated to true" wme)
         m))))
 
 (defn predicate? [c]

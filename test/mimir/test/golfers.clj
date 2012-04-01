@@ -29,7 +29,7 @@
         (not= 4 (:position ?g4))
         (not= :orange (:pants-color ?g4))
 
-        (some #(= ?g %) [?g1 ?g2 ?g3 ?g4])
+        (some #{?g} [?g1 ?g2 ?g3 ?g4])
 
         (different :position
                    ?g1 ?g2 ?g3 ?g4)
@@ -38,7 +38,8 @@
                    ?g1 ?g2 ?g3 ?g4)
 
         =>
-        (hash-set ?g1 ?g2 ?g3 ?g4))
+
+        #{?g1 ?g2 ?g3 ?g4})
 
   (match? #{{:name "Fred", :position 1, :pants-color :orange}
             {:name "Joe", :position 2, :pants-color :blue}
