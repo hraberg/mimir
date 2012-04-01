@@ -1,11 +1,18 @@
 (ns mimir.test.common
-  (:use [mimir.well :only (run triplets quote-fact fact reset *net*)]
+  (:use [mimir.well :only (run triplets quote-fact fact reset *net* working-memory)]
         [clojure.set :only (subset?)]
         [clojure.test]))
 
 (defmacro match? [& expected]
   (when expected
     `(is (= (set ~(vec (triplets expected quote-fact))) (set (run))))))
+
+(defn no-matches? []
+  (match?))
+
+(defn working-memory-size-is [n]
+  (is (= n (count (working-memory)))))
+
 
 (defmacro matches? [& expected]
   (when expected

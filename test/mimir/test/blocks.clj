@@ -1,5 +1,5 @@
 (ns mimir.test.blocks
-  (:use [mimir.well :only (rule run facts)]
+  (:use [mimir.well :only (rule run facts fact retract working-memory)]
         [mimir.test.common]
         [clojure.test]))
 
@@ -23,4 +23,19 @@
         =>
         ?x is on-top)
 
+  (match? B1 is on-top)
+
+  ; retract irrelevant fact
+  (retract B2 color blue)
+  (working-memory-size-is 9)
+  (match? B1 is on-top)
+
+  ; retract relevant fact
+  (retract B2 left-of B3)
+  (working-memory-size-is 8)
+  (no-matches?)
+
+  ; restate the fact
+  (facts B2 left-of B3)
+  (working-memory-size-is 9)
   (match? B1 is on-top))
