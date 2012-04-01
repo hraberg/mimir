@@ -228,6 +228,9 @@
 (defn all-different? [& xs]
   (= xs (distinct xs)))
 
+(defn unique? [& xs]
+  (= xs (sort xs)))
+
 (defn permutations [n coll]
   (if (zero? n)
     '(())
