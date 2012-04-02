@@ -3031,9 +3031,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>mimir -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">mimir</h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>Mímir is an experimental rule engine written in Clojure</p>
 </div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0-beta5</td></tr><tr><td class="dep-name">log4j/log4j</td><td class="dotted"><hr /></td><td class="dep-version">1.2.16</td></tr><tr><td class="dep-name">org.clojure/tools.logging</td><td class="dotted"><hr /></td><td class="dep-version">0.2.3</td></tr></table></div><div class="dependencies"><h3>dev dependencies</h3><table><tr><td class="dep-name">org.clojure/tools.trace</td><td class="dotted"><hr /></td><td class="dep-version">0.7.2-20120223.025622-2</td></tr><tr><td class="dep-name">marginalia</td><td class="dotted"><hr /></td><td class="dep-version">0.7.0</td></tr><tr><td class="dep-name">lein-difftest</td><td class="dotted"><hr /></td><td class="dep-version">1.3.7</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#mimir.well">mimir.well</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#mimir.well" name="mimir.well"><h1 class="project-name">mimir.well</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns mimir.well
-  (:use [clojure.set :only (intersection map-invert rename-keys difference union)]
-        [clojure.tools.logging :only (debug info warn error)]
-        [clojure.walk :only (postwalk)])
+  (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
+        [clojure.tools.logging :only (debug info warn error spy)]
+        [clojure.walk :only (postwalk postwalk-replace)])
   (:refer-clojure :exclude [assert])
   (:gen-class))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn create-net []
@@ -3044,39 +3044,54 @@ net.brehaut.ClojureTools = (function (SH) {
    :beta-join-nodes {}})</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:dynamic *net* (atom (create-net)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn working-memory [] (:working-memory @*net*))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn alpha-network [] (:alpha-network @*net*))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn beta-join-nodes [] (:beta-join-nodes @*net*))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn triplets
   ([x] (triplets x identity))
   ([[x &amp; xs] post-fn]
      (when x
-       (if (seq? x) (cons x (triplets xs post-fn))
+       (if ((some-fn
+             sequential? map? set? string?) x) (cons x (triplets xs post-fn))
            (cons (post-fn (cons x (take 2 xs)))
                  (triplets (drop 2 xs) post-fn))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn triplet? [x]
+  (and (sequential? x) (= 3 (count x))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn is-var? [x]
-  (and (symbol? x)
-       (boolean (re-find #&quot;^(\?.+|&lt;.+&gt;)$&quot; (name x)))))</pre></td></tr><tr><td class="docs">
+  (if (symbol? x)
+    (let [s (name x)]
+      (or (.startsWith s &quot;?&quot;)
+          (re-matches #&quot;[A-Z]+&quot; s)))
+    false))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn vars [x]
-  (set (filter is-var? x)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn all-vars [x]
-  (-&gt; x flatten vars vec))</pre></td></tr><tr><td class="docs">
+  (let [vars (transient [])]
+    (postwalk #(when (is-var? %) (conj! vars %)) x)
+    (persistent! vars)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn quote-fact [t]
   (list 'quote t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn expand-rhs [t]
   (cons 'mimir.well/assert t))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ellipsis
+  ([x] (ellipsis 5 x))
+  ([n x]
+     (str (seq (take n x)) (when (&lt; n (count x))
+                             (str &quot; ...  [total: &quot; (count x) &quot;]&quot;)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro rule [name &amp; body]
   (let [[lhs _ rhs] (partition-by '#{=&gt;} body)
         [doc lhs] (split-with string? lhs)
         lhs (triplets lhs)
         rhs (triplets rhs expand-rhs)]
     `(let [f# (defn ~name
-                ([] (~name (working-memory)))
-                ([~'wm]
-                   (debug &quot;rule&quot; '~name)
+                ([] (~name {}))
+                ([~'args] (map #(%) (~name (working-memory) ~'args)))
+                ([~'wm ~'args]
+                   (debug &quot;rule&quot; '~name '~*ns*)
                    (doall
-                    (for [vars# (check-rule '~(vec lhs) ~'wm)
-                          :let [{:syms ~(all-vars rhs)} vars#]]
+                    (for [vars# (binding [*ns* '~*ns*]
+                                  (check-rule '~(vec lhs) ~'wm ~'args))
+                          :let [{:syms ~(vars rhs)} vars#]]
                       #(do
                          (debug &quot;rhs&quot; vars#)
                          ~@rhs)))))]
@@ -3084,121 +3099,183 @@ net.brehaut.ClojureTools = (function (SH) {
        (alter-meta! f# merge {:lhs '~lhs :rhs '~rhs :doc ~(apply str doc)})
        (swap! *net* update-in [:productions] conj f#)
        f#)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro defrule [name &amp; body]
-  `(rule ~name ~@body))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro with-cache [cache-name key f]
+</td><td class="codes"><pre class="brush: clojure">(defmacro with-cache [cache-name key &amp; f]
   (let [cache-name (keyword cache-name)]
     `(let [key# ~key]
        (if-not (contains? ('~cache-name @*net*) key#)
-         (let [v# ~f]
+         (let [v# (do ~@f)]
            (swap! *net* assoc-in ['~cache-name key#] v#)
            v#)
          (get-in @*net* ['~cache-name key#])))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn join-on [x y]
-  (intersection (set (all-vars x)) (set (all-vars y))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn vars-by-index [c]
-  (-&gt;&gt; c (filter is-var?)
-       (map-indexed #(vector (symbol (str &quot;?&quot; (inc %1)))  %2))
-       (into {})))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn with-index-vars [c]
-  (replace (map-invert (vars-by-index c)) c))</pre></td></tr><tr><td class="docs">
+  (intersection (set (vars x)) (set (vars y))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn var-sym [x]
+  (symbol (str &quot;?&quot; x)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn var-to-index [c]
+  (loop [[v &amp; vs] (vars c)
+         acc {}]
+    (if v
+      (recur vs (if (acc v)
+                  acc
+                  (assoc acc v (var-sym (inc (count acc))))))
+      acc)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ordered-vars [c]
+  (-&gt;&gt; (var-to-index c) vals sort vec))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn predicate-for [c]
-  (with-cache predicates c
-    (eval `(fn ~(all-vars c) ~c))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn match-using-predicate [c wm]
+  (with-cache predicate c
+    (let [args (ordered-vars c)
+          src `(fn ~args ~c)]
+      (with-meta (eval src) {:src src}))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn match-using-predicate [c wme]
   (try
-    (debug &quot;predicate&quot; c wm)
-    (let [args (all-vars c)
-          predicate (predicate-for c)]
-      (if (= 1 (count args))
-        (when (predicate wm)
-          (debug &quot; evaluated to true&quot;)
-          {(first args) wm})
-        (do
-          (debug &quot; more than one argument, needs beta network&quot;)
-          (apply hash-map (interleave args (repeat predicate))))))
+    (let [predicate (predicate-for c)]
+      (when (predicate wme)
+        (debug &quot; evaluated to true&quot; wme)
+        {'?1 wme}))
     (catch RuntimeException e
       (debug &quot; threw non fatal&quot; e))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn match-wme [c wm]
-  (if (resolve (first c))
-    (match-using-predicate c wm)
-    (loop [[v &amp; vs] wm [t &amp; ts] c m {}]
-      (if v
-        (condp some [t]
-          #{v} (recur vs ts m)
-          is-var? (recur vs ts (assoc m t v))
-          nil)
+</td><td class="codes"><pre class="brush: clojure">(defn match-triplet [c wme]
+  (loop [[v &amp; vs] wme [t &amp; ts] c m {}]
+    (if v
+      (condp some [t]
+        #{v} (recur vs ts m)
+        is-var? (recur vs ts (assoc m t v))
+        nil)
+      (do
+        (debug &quot; evaluated to true&quot; wme)
         m))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn fact [fact]
-  (when-not (contains? (working-memory) fact)
-    (debug &quot;asserting fact&quot; fact)
-    (swap! *net* update-in [:working-memory] conj fact)
+</td><td class="codes"><pre class="brush: clojure">(defn predicate? [c]
+  (-&gt; c first resolve boolean))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn multi-var-predicate? [c]
+  (and (predicate? c) (&gt; (count (ordered-vars c)) 1)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn multi-var-predicate-placeholder [c]
+  (let [args (ordered-vars c)]
+    (debug &quot; more than one argument, needs beta network&quot;)
+    (with-meta (zipmap args (repeat (predicate-for c))) {:args args})))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn match-wme [c wme]
+  (condp some [c]
+    predicate? (match-using-predicate c wme)
+    triplet? (match-triplet c wme)
+    nil))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ^:private wm-crud [action test msg fact]
+  (when (test (working-memory) fact)
+    (debug msg &quot; fact&quot; fact)
+    (swap! *net* update-in [:working-memory] action fact)
     (doseq [c (keys (:alpha-network @*net*))
             :let [match (match-wme c fact)]
             :when match]
-      (debug &quot;inserting into alpha network&quot; match)
-      (swap! *net* update-in [:alpha-network] #(merge-with conj % {c match}))))
+      (debug &quot; alpha network change&quot; match)
+      (swap! *net* update-in [:alpha-network] #(merge-with action % {c match}))))
   fact)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn fact [fact]
+  (wm-crud conj (complement contains?) &quot;asserting&quot; fact))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn retract* [fact]
+  (wm-crud disj contains? &quot;retracting&quot; fact))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro facts [&amp; wms]
   (when wms
     `(doall
       (for [wm# ~(vec (triplets wms quote-fact))]
         (fact wm#)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro ! [&amp; wms]
-  `(facts ~@wms))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn matching-wmes
   ([c] (matching-wmes c (working-memory)))
   ([c wm]
      (debug &quot;condition&quot; c)
-     (-&gt;&gt; wm
-          (map #(match-wme c %))
-          (remove nil?)
-          (set))))</pre></td></tr><tr><td class="docs">
+     (if (multi-var-predicate? c)
+       #{(multi-var-predicate-placeholder c)}
+       (-&gt;&gt; wm
+            (map #(match-wme c %))
+            (remove nil?)
+            (set)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn alpha-network-lookup [c wm]
   (with-cache alpha-network c
     (matching-wmes c wm)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn alpha-memory
   ([c] (alpha-memory c (working-memory)))
   ([c wm]
-     (let [vars-by-index (vars-by-index c)]
-       (-&gt;&gt; (alpha-network-lookup (with-index-vars c) wm)
-            (map #(rename-keys % vars-by-index))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn join-key [x join-on]
-  (when-let [keys (seq (select-keys x join-on))]
-    (apply vec keys)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn prepare-join [x join-on]
-  (sort-by first (map #(list (join-key % join-on) %) x)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn join [left right join-on]
-  (debug &quot;join&quot; left right join-on)
-  (let [[left right] (sort-by count (map #(prepare-join % join-on) [left right]))]
-    (loop [[[lk lv] &amp; l-rst :as l] left
-           [[rk rv] &amp; r-rst :as r] right
-           acc #{}]
-      (debug &quot;joining&quot; lk rk lv rv)
-      (if-not (and lk rk)
-        acc
-        (condp some [(compare lk rk)]
-          neg? (recur l-rst r acc)
-          pos? (recur l r-rst acc)
-          (recur l-rst r-rst (conj acc (merge lv rv))))))))</pre></td></tr><tr><td class="docs">
+     (let [var-to-index (var-to-index c)
+           vars-by-index (map-invert var-to-index)]
+       (-&gt;&gt; (alpha-network-lookup (postwalk-replace var-to-index c) wm)
+            (map #(rename-keys (with-meta % (postwalk-replace vars-by-index (meta %))) vars-by-index))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn cross [left right]
-  (let [cross (into #{}
-                    (for [x left y right]
-                      (merge x y)))]
-    (debug &quot;nothing to join on, treating as or&quot; cross)
-    cross))</pre></td></tr><tr><td class="docs">
+  (debug &quot; nothing to join on, treating as or&quot;)
+  (into #{}
+        (for [x left y right]
+          (merge x y))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn multi-var-predicate-node? [am]
+  (if (and (seq? am) (= 1 (count am)))
+    (fn? (-&gt; am first first val))
+    false))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn all-different? [xs]
+  (= xs (distinct xs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn all-different [&amp; xs]
+  (all-different? xs))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn different [f &amp; xs]
+  (all-different? (map f xs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn unique [xs]
+  (= xs (sort xs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn same*
+  ([test pred xs]
+     (test (for [x xs y (remove #{x} xs)]
+             (pred x y)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn not-same [pred &amp; xs]
+  (same* (partial not-any? true?) pred xs))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn same [pred &amp; xs]
+  (same* (partial every? true?) pred xs))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn permutations [n coll]
+  (if (zero? n)
+    '(())
+    (-&gt;&gt; (permutations (dec n) coll)
+         (mapcat #(map (partial conj %) coll))
+         (filter #(all-different? %)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ^:private build-args [base wmes]
+  (loop [idx 0 wmes wmes base (transient base)]
+    (if (seq wmes)
+      (if (is-var? (base idx))
+        (recur (inc idx) (next wmes) (assoc! base idx (first wmes)))
+        (recur (inc idx) wmes base))
+      (persistent! base))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn deal-with-multi-var-predicates [c1-am c2-am join-on]
+  (let [pred (-&gt; c2-am first first val)
+        args (-&gt; c2-am first meta :args)
+        needed-args (remove join-on args)
+        permutated-wm (permutations (count needed-args) (working-memory))]
+    (debug &quot; multi-var-predicate&quot;)
+    (debug &quot; args&quot; args)
+    (debug &quot; known args&quot; join-on &quot;- need to find&quot; (count needed-args))
+    (debug &quot; permutations of wm&quot; (ellipsis permutated-wm))
+    (mapcat
+     (fn [m]
+       (let [known-args (select-keys m join-on)
+             base-args (replace known-args args)
+             overlap (set (vals known-args))]
+         (for [wmes (remove #(some overlap %) permutated-wm)
+               :when (try
+                       (apply pred (build-args base-args wmes))
+                       (catch RuntimeException e
+                         (debug &quot; threw non fatal&quot; e)))]
+           (merge m (zipmap needed-args wmes)))))
+     c1-am)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
     (with-cache beta-join-nodes [c1-am c2-am]
-      (let [join-on (join-on c1 c2)]
-        (if (empty? join-on)
-          (cross c1-am c2-am)
-          (join c1-am c2-am join-on)))))) ; (clojure.set/join c1-am c2-am)</pre></td></tr><tr><td class="docs">
+      (let [join-on (join-on (-&gt; c1-am first keys) c2)]
+        (debug &quot;join&quot; join-on)
+        (debug &quot;  left&quot; (ellipsis c1-am))
+        (debug &quot; right&quot; (ellipsis c2-am))
+        (let [result (cond
+                      (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
+                      (empty? join-on) (cross c1-am c2-am)
+                      :else (join c1-am c2-am))]
+          (debug &quot;result&quot; (ellipsis result))
+          result)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn dummy-beta-join-node [c wm args]
+  (beta-join-node '() c #{args} wm))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn check-rule
-  ([cs wm]
+  ([cs wm] (check-rule cs wm {}))
+  ([cs wm args]
      (debug &quot;conditions&quot; cs)
      (loop [[c1 &amp; cs] cs
-            matches (alpha-memory c1 wm)]
+            matches (dummy-beta-join-node c1 wm args)]
        (if-not cs
          matches
          (let [c2 (first cs)]
@@ -3209,9 +3286,15 @@ net.brehaut.ClojureTools = (function (SH) {
         (fact fact#)))
   ([id rel attr]
      `(assert ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro retract
+  ([fact]
+     `(let [fact# (list ~@(quote-non-vars fact))]
+        (retract* fact#)))
+  ([id rel attr]
+     `(retract ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn run-once [wm productions]
   (-&gt;&gt; productions
-       (mapcat #(% wm))
+       (mapcat #(% wm {}))
        (map #(%))
        set))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn run
@@ -3225,10 +3308,6 @@ net.brehaut.ClojureTools = (function (SH) {
            (if (seq (difference (working-memory) wm))
              (recur (working-memory) productions acc)
              acc))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro match? [&amp; expected]
-  `(= (set ~(vec (triplets expected quote-fact))) (set (run))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro ? [&amp; expected]
-  `(match? ~@expected))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn reset []
   (reset! *net* (create-net)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn version []
