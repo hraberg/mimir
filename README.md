@@ -61,16 +61,16 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 [OPS5](https://github.com/briangu/OPS5) "This Common Lisp version of OPS5 is in the public domain.  It is based in part on based on a Franz Lisp implementation done by Charles L. Forgy"
 
 [Rule Solver: Constraint Programming with OpenRules](http://openrules.com/pdf/RulesSolver.UserManual.pdf) Jacob Feldman, 2012
- * [JSR-331](http://jcp.org/aboutJava/communityprocess/final/jsr331/index.html)
+* [JSR-331](http://jcp.org/aboutJava/communityprocess/final/jsr331/index.html)
 
 [Paradigms of AI Programming](http://norvig.com/Lisp-retro.html) Peter Norvig, 1997
 
 [Artificial Intelligence: A Modern Approach](http://aima.cs.berkeley.edu/) Stuart Russell and Peter Norvig, 2011
- * "Pseudo-code algorithms from the book in [pdf](http://aima.cs.berkeley.edu/algorithms.pdf)"
- * [aima-java](http://code.google.com/p/aima-java/) [Ravi Mohan](http://pindancing.blogspot.co.uk/) et al.
+* "Pseudo-code algorithms from the book in [pdf](http://aima.cs.berkeley.edu/algorithms.pdf)"
+* [aima-java](http://code.google.com/p/aima-java/) [Ravi Mohan](http://pindancing.blogspot.co.uk/) et al.
 
 [Approaches to Automatic Programming](http://www.merl.com/papers/docs/TR92-04.pdf) Charles Rich and Richard C. Waters, 1992
- * ["Myths and Prosopects"](http://www.isr.uci.edu/~andre/ics228s2006/richwaters.pdf) 1988, original IEEE Computer article
+* ["Myths and Prosopects"](http://www.isr.uci.edu/~andre/ics228s2006/richwaters.pdf) 1988, original IEEE Computer article
 
 [Metafor: Visualising Stories as Code](http://web.media.mit.edu/~hugo/publications/drafts/IUI2005-metafor.4.pdf) Hugo Liu and Henery Lieberman, 2005
 
