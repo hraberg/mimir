@@ -42,7 +42,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
                (base 10     M O R E))
             (= (base 10   M O N E Y)))
 
-        (all-different? S E N D M O R Y)
+        (all-different S E N D M O R Y)
 
         =>
 
@@ -50,6 +50,8 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 
    (match? "9567+1085=10652")
 ```
+
+For more, see the [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
 
 
 ## References
