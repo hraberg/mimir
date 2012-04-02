@@ -260,8 +260,9 @@
     (mapcat
      (fn [m]
        (let [known-args (select-keys m join-on)
-             base-args (replace known-args args)]
-         (for [wmes permutated-wm
+             base-args (replace known-args args)
+             overlap (set (vals known-args))]
+         (for [wmes (remove #(some overlap %) permutated-wm)
                :when (try
                        (apply pred (build-args base-args wmes))
                        (catch RuntimeException e
