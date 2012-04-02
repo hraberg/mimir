@@ -250,7 +250,6 @@
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
-        src (-> pred meta :src)
         needed-args (remove join-on args)
         permutated-wm (permutations (count needed-args) (working-memory))]
     (debug " multi-var-predicate")
