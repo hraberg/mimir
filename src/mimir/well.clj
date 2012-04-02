@@ -113,7 +113,7 @@
   (with-cache predicate c
     (let [args (ordered-vars c)
           src `(fn ~args ~c)]
-      (with-meta (eval src) {:src src}))))
+      (with-meta (eval src) {:src src :args args}))))
 
 (defn match-using-predicate [c wme]
   (try
@@ -139,12 +139,12 @@
   (-> c first resolve boolean))
 
 (defn multi-var-predicate? [c]
-  (and (predicate? c) (> (count (ordered-vars c)) 1)))
+  (and (predicate? c) (> (count (vars c)) 1)))
 
 (defn multi-var-predicate-placeholder [c]
-  (let [args (ordered-vars c)]
+  (let [pred (predicate-for c)]
     (debug " more than one argument, needs beta network")
-    (with-meta (zipmap args (repeat (predicate-for c))) {:args args})))
+    (with-meta (zipmap (-> pred meta :args) (repeat pred)) (meta pred))))
 
 (defn match-wme [c wme]
   (condp some [c]
