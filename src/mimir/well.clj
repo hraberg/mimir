@@ -235,9 +235,9 @@
 (defn permutations [n coll]
   (if (zero? n)
     '(())
-    (->> (permutations (dec n) coll)
-         (mapcat #(map (partial conj %) coll))
-         (filter #(all-different? %)))))
+    (for [x (permutations (dec n) coll) y coll
+                 :when (not-any? #{y} x)]
+      (conj x y))))
 
 (defn ^:private build-args [base wmes]
   (loop [idx 0 wmes wmes base (transient base)]
