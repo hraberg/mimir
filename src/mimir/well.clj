@@ -236,7 +236,7 @@
   (if (zero? n)
     '(())
     (for [x (permutations (dec n) coll) y coll
-                 :when (not-any? #{y} x)]
+          :when (not-any? #(identical? y %) x)]
       (conj x y))))
 
 (defn ^:private build-args [base wmes]
