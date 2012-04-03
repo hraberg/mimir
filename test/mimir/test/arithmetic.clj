@@ -18,12 +18,24 @@
 
   (matches? "2+4=6"))
 
+(deftest equals
+  (integers)
+
+  (rule equals
+        (= X Y)
+        =>
+        (str X '= Y))
+
+  (matches? "1=1"))
+
 (deftest send-more-money
   (integers)
 
   (rule send-more-money
         (> S 0)
         (= M 1)
+
+        (= (mod (+ D E) 10) Y)
 
         (-> (+ (base 10     S E N D)
                (base 10     M O R E))

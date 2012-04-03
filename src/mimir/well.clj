@@ -113,16 +113,17 @@
   (with-cache predicate c
     (let [args (ordered-vars c)
           src `(fn ~args ~c)]
+      (debug " compiling" c)
       (with-meta (eval src) {:src src :args args}))))
 
 (defn match-using-predicate [c wme]
-  (try
-    (let [predicate (predicate-for c)]
+  (let [predicate (predicate-for c)]
+    (try
       (when (predicate wme)
         (debug " evaluated to true" wme)
-        {'?1 wme}))
-    (catch RuntimeException e
-      (debug " threw non fatal" e))))
+        {'?1 wme})
+      (catch RuntimeException e
+        (debug " threw non fatal" e)))))
 
 (defn match-triplet [c wme]
   (loop [[v & vs] wme [t & ts] c m {}]
@@ -147,10 +148,9 @@
     (with-meta (zipmap (-> pred meta :args) (repeat pred)) (meta pred))))
 
 (defn match-wme [c wme]
-  (condp some [c]
-    predicate? (match-using-predicate c wme)
-    triplet? (match-triplet c wme)
-    nil))
+  (if (predicate? c)
+    (match-using-predicate c wme)
+    (match-triplet c wme)))
 
 (defn ^:private wm-crud [action test msg fact]
   (when (test (working-memory) fact)
@@ -223,7 +223,7 @@
 
 (defn same*
   ([test pred xs]
-     (test (for [x xs y (remove #{x} xs)]
+     (test (for [x xs y (remove #(identical? x %) xs)]
              (pred x y)))))
 
 (defn not-same [pred & xs]
@@ -235,8 +235,7 @@
 (defn permutations [n coll]
   (if (zero? n)
     '(())
-    (for [x (permutations (dec n) coll) y coll
-          :when (not-any? #(identical? y %) x)]
+    (for [x (permutations (dec n) coll) y coll]
       (conj x y))))
 
 (defn ^:private build-args [base wmes]
@@ -255,13 +254,12 @@
     (debug " multi-var-predicate")
     (debug " args" args)
     (debug " known args" join-on "- need to find" (count needed-args))
-    (debug " permutations of wm" (ellipsis permutated-wm))
+    (debug " permutations of wm" (time (ellipsis permutated-wm)))
     (mapcat
      (fn [m]
        (let [known-args (select-keys m join-on)
-             base-args (replace known-args args)
-             overlap (set (vals known-args))]
-         (for [wmes (remove #(some overlap %) permutated-wm)
+             base-args (replace known-args args)]
+         (for [wmes permutated-wm
                :when (try
                        (apply pred (build-args base-args wmes))
                        (catch RuntimeException e
