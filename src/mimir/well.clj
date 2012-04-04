@@ -9,9 +9,9 @@
   {:productions #{}
    :working-memory #{}
    :predicates {}
+   :predicate-invokers {}
    :alpha-network {}
-   :beta-join-nodes {}
-   :invokers {}})
+   :beta-join-nodes {}})
 
 (def ^:dynamic *net* (atom (create-net)))
 
@@ -247,8 +247,8 @@
        (for [x (permutations (dec n) coll) y coll]
          (conj x y)))))
 
-(defn invoker [args join-on]
-  (with-cache invokers [args join-on]
+(defn predicate-invoker [args join-on]
+  (with-cache predicate-invokers [args join-on]
     (eval `(fn [pred# {:syms [~@(filter join-on args)]} [~@(remove join-on args)]]
              (pred# ~@args)))))
 
@@ -257,7 +257,7 @@
         args (-> c2-am first meta :args)
         needed-args (remove join-on args)
         permutated-wm (permutations (count needed-args) (working-memory))
-        invoker (invoker args join-on)]
+        invoker (predicate-invoker args join-on)]
     (debug " multi-var-predicate")
     (debug " args" args)
     (debug " known args" join-on "- need to find" needed-args)
