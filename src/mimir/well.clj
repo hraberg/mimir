@@ -10,7 +10,8 @@
    :working-memory #{}
    :predicates {}
    :alpha-network {}
-   :beta-join-nodes {}})
+   :beta-join-nodes {}
+   :invokers {}})
 
 (def ^:dynamic *net* (atom (create-net)))
 
@@ -57,8 +58,9 @@
 (defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
-     (str (seq (take n x)) (when (< n (count x))
-                             (str " ...  [total: " (count x) "]")))))
+     ;; (str (seq (take n x)) (when (< n (count x))
+     ;;                         (str " ...  [total: " (count x) "]")))
+     ))
 
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
@@ -209,62 +211,66 @@
     (fn? (-> am first first val))
     false))
 
+(defn same*
+  ([f [x & xs]]
+     (when x
+       (lazy-seq
+        (concat (map #(f x %) xs)
+                (same* f xs))))))
+
+(defn not-same [pred & xs]
+  (every? false? (same* pred xs)))
+
+(defn same [pred & xs]
+  (every? true? (same* pred xs)))
+
 (defn all-different? [xs]
   (= xs (distinct xs)))
 
 (defn all-different [& xs]
-  (all-different? xs))
+  (apply not-same = xs))
 
 (defn different [f & xs]
-  (all-different? (map f xs)))
+  (apply all-different (map f xs)))
 
 (defn unique [xs]
   (= xs (sort xs)))
 
-(defn same*
-  ([test pred xs]
-     (test (for [x xs y (remove #(identical? x %) xs)]
-             (pred x y)))))
+(defn permutations
+  ([coll] (permutations (count coll) coll))
+  ([n coll]
+     (if (zero? n)
+       '(())
+       (for [x (permutations (dec n) coll) y coll]
+         (conj x y)))))
 
-(defn not-same [pred & xs]
-  (same* (partial not-any? true?) pred xs))
+(defmacro invoker [args known-args needed-args]
+  `(fn [^clojure.lang.IFn ~'pred {:syms [~@known-args]} [~@needed-args]] (~'pred ~@args)))
 
-(defn same [pred & xs]
-  (same* (partial every? true?) pred xs))
-
-(defn permutations [n coll]
-  (if (zero? n)
-    '(())
-    (for [x (permutations (dec n) coll) y coll]
-      (conj x y))))
-
-(defn ^:private build-args [base wmes]
-  (loop [idx 0 wmes wmes base (transient base)]
-    (if (seq wmes)
-      (if (is-var? (base idx))
-        (recur (inc idx) (next wmes) (assoc! base idx (first wmes)))
-        (recur (inc idx) wmes base))
-      (persistent! base))))
+(defn invoker-for [args join-on]
+  (with-cache invokers [args join-on]
+    (let [needed-args (remove join-on args)
+          known-args (filter join-on args)]
+      (eval `(invoker ~args ~known-args ~needed-args)))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
         needed-args (remove join-on args)
-        permutated-wm (permutations (count needed-args) (working-memory))]
+        permutated-wm (permutations (count needed-args) (working-memory))
+        invoker (invoker-for args join-on)]
     (debug " multi-var-predicate")
     (debug " args" args)
-    (debug " known args" join-on "- need to find" (count needed-args))
-    (debug " permutations of wm" (time (ellipsis permutated-wm)))
+    (debug " known args" join-on "- need to find" needed-args)
+    (debug " permutations of wm" (ellipsis permutated-wm))
     (mapcat
      (fn [m]
-       (let [known-args (select-keys m join-on)
-             base-args (replace known-args args)]
-         (for [wmes permutated-wm
-               :when (try
-                       (apply pred (build-args base-args wmes))
-                       (catch RuntimeException e
-                         (debug " threw non fatal" e)))]
-           (merge m (zipmap needed-args wmes)))))
+       (for [wmes permutated-wm
+             :when (try
+                     (invoker pred m wmes)
+                     (catch RuntimeException e
+                       (debug " threw non fatal" e)))]
+         (merge m (zipmap needed-args wmes))))
      c1-am)))
 
 (defn beta-join-node [c1 c2 c1-am wm]
