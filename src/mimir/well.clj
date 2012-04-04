@@ -58,8 +58,13 @@
 (defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
-     (str (seq (take n x)) (when (< n (count x))
-                             (str " ...  [total: " (count x) "]")))))
+     (let [[start more] (split-at n (take (inc n) x))]
+       (str (seq start)
+            (when more
+              (str "... [total: " (if (instance? clojure.lang.LazySeq x)
+                                    "(lazy-seq)"
+                                    (count x))
+                   "]"))))))
 
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
@@ -213,9 +218,8 @@
 (defn same*
   ([f [x & xs]]
      (when x
-       (lazy-seq
         (concat (map #(f x %) xs)
-                (same* f xs))))))
+                (same* f xs)))))
 
 (defn not-same [pred & xs]
   (every? false? (same* pred xs)))
@@ -243,21 +247,17 @@
        (for [x (permutations (dec n) coll) y coll]
          (conj x y)))))
 
-(defmacro invoker [args known-args needed-args]
-  `(fn [^clojure.lang.IFn ~'pred {:syms [~@known-args]} [~@needed-args]] (~'pred ~@args)))
-
-(defn invoker-for [args join-on]
+(defn invoker [args join-on]
   (with-cache invokers [args join-on]
-    (let [needed-args (remove join-on args)
-          known-args (filter join-on args)]
-      (eval `(invoker ~args ~known-args ~needed-args)))))
+    (eval `(fn [pred# {:syms [~@(filter join-on args)]} [~@(remove join-on args)]]
+             (pred# ~@args)))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
         needed-args (remove join-on args)
         permutated-wm (permutations (count needed-args) (working-memory))
-        invoker (invoker-for args join-on)]
+        invoker (invoker args join-on)]
     (debug " multi-var-predicate")
     (debug " args" args)
     (debug " known args" join-on "- need to find" needed-args)
