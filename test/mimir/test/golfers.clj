@@ -29,13 +29,13 @@
         (not= 4 (:position ?g4))
         (not= :orange (:pants-color ?g4))
 
-        (some #{?g} [?g1 ?g2 ?g3 ?g4])
-
         (different :position
                    ?g1 ?g2 ?g3 ?g4)
 
         (different :pants-color
                    ?g1 ?g2 ?g3 ?g4)
+
+        (some #{?g} [?g1 ?g2 ?g3 ?g4])
 
         =>
 

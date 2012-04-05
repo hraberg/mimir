@@ -1,7 +1,7 @@
 (ns mimir.well
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
-        [clojure.walk :only (postwalk postwalk-replace)])
+        [clojure.walk :only (postwalk postwalk-replace macroexpand-all)])
   (:refer-clojure :exclude [assert])
   (:gen-class))
 
@@ -27,8 +27,8 @@
      (when x
        (if ((some-fn
              sequential? map? set? string?) x) (cons x (triplets xs post-fn))
-           (cons (post-fn (cons x (take 2 xs)))
-                 (triplets (drop 2 xs) post-fn))))))
+             (cons (post-fn (cons x (take 2 xs)))
+                   (triplets (drop 2 xs) post-fn))))))
 
 (defn triplet? [x]
   (and (sequential? x) (= 3 (count x))))
@@ -66,10 +66,21 @@
                                     (count x))
                    "]"))))))
 
+
+(defn macroexpand-conditions [lhs]
+  (loop [[c & cs] (map macroexpand lhs)
+         acc []]
+    (if-not c
+        acc
+      (recur cs
+             (if (every? seq? c)
+               (into acc c)
+               (conj acc c))))))
+
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
-        lhs (triplets lhs)
+        expanded-lhs (macroexpand-conditions (triplets lhs))
         rhs (triplets rhs expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
@@ -78,12 +89,16 @@
                    (debug "rule" '~name '~*ns*)
                    (doall
                     (for [vars# (binding [*ns* '~*ns*]
-                                  (check-rule '~(vec lhs) ~'wm ~'args))
-                          :let [{:syms ~(vars rhs)} vars#]]
+                                  (check-rule '~(vec expanded-lhs) ~'wm ~'args))
+                          :let [{:syms ~(vars rhs)} vars#
+                                ~'*vars* (map val (sort-by key vars#))]]
                       #(do
                          (debug "rhs" vars#)
                          ~@rhs)))))]
        (debug "defining rule" '~name)
+       (when-not (= '~lhs '~expanded-lhs)
+          (debug "expanded" '~lhs)
+          (debug "    into" '~expanded-lhs))
        (alter-meta! f# merge {:lhs '~lhs :rhs '~rhs :doc ~(apply str doc)})
        (swap! *net* update-in [:productions] conj f#)
        f#)))
@@ -215,29 +230,36 @@
     (fn? (-> am first first val))
     false))
 
-(defn same*
-  ([f [x & xs]]
-     (when x
-        (concat (map #(f x %) xs)
-                (same* f xs)))))
-
-(defn not-same [pred & xs]
-  (every? false? (same* pred xs)))
-
-(defn same [pred & xs]
-  (every? true? (same* pred xs)))
-
 (defn all-different? [xs]
   (= xs (distinct xs)))
 
-(defn all-different [& xs]
-  (apply not-same = xs))
+(defn different* [f [x & xs]]
+  (when x
+    (concat (for [y xs]
+              `(not= (~f ~x) (~f ~y)))
+            (different* f xs))))
 
-(defn different [f & xs]
-  (apply all-different (map f xs)))
+(defmacro different [f & xs]
+  (different* f xs))
 
-(defn unique [xs]
-  (= xs (sort xs)))
+(defmacro all-different [& xs]
+  (different* 'identity xs))
+
+(defn same* [f test [x & xs]]
+  (when x
+    (concat (for [y xs]
+              `(~test (~f ~x ~y)))
+            (same* f test xs))))
+
+(defmacro same [f & xs]
+  (same* f 'true? xs))
+
+(defmacro not-same [f & xs]
+  (same* f 'false? xs))
+
+(defmacro unique [xs]
+  (for [[x y] (partition 2 1 xs)]
+    `(pos? (compare ~x ~y))))
 
 (defn permutations
   ([coll] (permutations (count coll) coll))

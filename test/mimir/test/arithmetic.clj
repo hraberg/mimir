@@ -35,11 +35,9 @@
         (> S 0)
         (= M 1)
 
-        (= (mod (+ D E) 10) Y)
-
-        (-> (+ (base 10     S E N D)
-               (base 10     M O R E))
-            (= (base 10   M O N E Y)))
+        (base 10    S E N D
+                  + M O R E
+                = M O N E Y)
 
         (all-different S E N D M O R Y)
 
