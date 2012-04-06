@@ -35,7 +35,7 @@
         (different :pants-color
                    ?g1 ?g2 ?g3 ?g4)
 
-        (some #{?g} [?g1 ?g2 ?g3 ?g4])
+        (#{?g1 ?g2 ?g3 ?g4} ?g)
 
         =>
 

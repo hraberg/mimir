@@ -155,7 +155,12 @@
         m))))
 
 (defn predicate? [c]
-  (-> c first resolve boolean))
+  (-> c first
+      ((some-fn
+        (every-pred
+         symbol? resolve)
+        (every-pred
+         (complement symbol?) ifn?)))))
 
 (defn multi-var-predicate? [c]
   (and (predicate? c) (> (count (vars c)) 1)))
