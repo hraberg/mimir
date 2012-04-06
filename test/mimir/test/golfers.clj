@@ -41,7 +41,7 @@
 
         #{?g1 ?g2 ?g3 ?g4})
 
-  (match? #{{:name "Fred", :position 1, :pants-color :orange}
-            {:name "Joe", :position 2, :pants-color :blue}
-            {:name "Bob", :position 4, :pants-color :plaid}
-            {:name "Tom", :position 3, :pants-color :red}}))
+  (time (match? #{{:name "Fred", :position 1, :pants-color :orange}
+                  {:name "Joe", :position 2, :pants-color :blue}
+                  {:name "Bob", :position 4, :pants-color :plaid}
+                  {:name "Tom", :position 3, :pants-color :red}})))
