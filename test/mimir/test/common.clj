@@ -23,10 +23,6 @@
 (defn integers []
   (->> (range 10) (map fact) doall))
 
-(defn base* [base [x & xs]]
-  (when x
-    (cons `(* ~(long (Math/pow 10 (count xs))) ~x) (base* base xs))))
-
 (defmacro base [base & expr]
   (let [[x [op] y [test] z] (partition-by '#{+ =} expr)
         reminders (map (comp symbol (partial str "?") gensym) (reverse z))]
