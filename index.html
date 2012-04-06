@@ -3048,13 +3048,13 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn alpha-network [] (:alpha-network @*net*))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn beta-join-nodes [] (:beta-join-nodes @*net*))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn triplets
-  ([x] (triplets x identity))
-  ([[x &amp; xs] post-fn]
+  ([x] (triplets x identity identity))
+  ([[x &amp; xs] fact-fn triplet-fn]
      (when x
        (if ((some-fn
-             sequential? map? set? string?) x) (cons x (triplets xs post-fn))
-             (cons (post-fn (cons x (take 2 xs)))
-                   (triplets (drop 2 xs) post-fn))))))</pre></td></tr><tr><td class="docs">
+             sequential? map? set? string?) x) (cons (fact-fn x) (triplets xs fact-fn triplet-fn))
+             (cons (triplet-fn (cons x (take 2 xs)))
+                   (triplets (drop 2 xs) fact-fn triplet-fn))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn triplet? [x]
   (and (sequential? x) (= 3 (count x))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn is-var? [x]
@@ -3074,6 +3074,13 @@ net.brehaut.ClojureTools = (function (SH) {
   (list 'quote t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn expand-rhs [t]
   (cons 'mimir.well/assert t))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def relations (reduce (fn [m rel] (assoc m rel rel))
+                       '{&lt;- mimir.well/match != not=} '[= &lt; &gt; &lt;= =&gt; not=]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn expand-lhs [t]
+  (if-let [rel (relations (second t))]
+    (let [[var _ &amp; [rest]] t]
+      (list rel var rest))
+    t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
@@ -3094,8 +3101,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmacro rule [name &amp; body]
   (let [[lhs _ rhs] (partition-by '#{=&gt;} body)
         [doc lhs] (split-with string? lhs)
-        expanded-lhs (macroexpand-conditions (triplets lhs))
-        rhs (triplets rhs expand-rhs)]
+        expanded-lhs (macroexpand-conditions (triplets lhs expand-lhs expand-lhs))
+        rhs (triplets rhs identity expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (map #(%) (~name (working-memory) ~'args)))
@@ -3163,7 +3170,12 @@ net.brehaut.ClojureTools = (function (SH) {
         (debug &quot; evaluated to true&quot; wme)
         m))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn predicate? [c]
-  (-&gt; c first resolve boolean))</pre></td></tr><tr><td class="docs">
+  (-&gt; c first
+      ((some-fn
+        (every-pred
+         symbol? resolve)
+        (every-pred
+         (complement symbol?) ifn?)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn multi-var-predicate? [c]
   (and (predicate? c) (&gt; (count (vars c)) 1)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn multi-var-predicate-placeholder [c]
@@ -3191,7 +3203,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmacro facts [&amp; wms]
   (when wms
     `(doall
-      (for [wm# ~(vec (triplets wms quote-fact))]
+      (for [wm# ~(vec (triplets wms identity quote-fact))]
         (fact wm#)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn matching-wmes
   ([c] (matching-wmes c (working-memory)))
@@ -3237,6 +3249,35 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmacro unique [xs]
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn match* [x pattern]
+  (condp some [pattern]
+    (some-fn
+     fn?
+     set?) (pattern x)
+     map?  (loop [[[k v] &amp; ks] (seq pattern)]
+                  (if-not k
+                    true
+                    (if (match* (x k) v)
+                      (recur ks)
+                      false)))
+     sequential? (loop [[p &amp; ps] pattern
+                        [x &amp; xs] x]
+                   (if-not p
+                     (nil? x)
+                     (if (= '&amp; p)
+                       (let [rst (vec (cons x xs))]
+                         (match* rst (repeat (count rst)
+                                             (first ps))))
+                       (if (match* x p)
+                         (recur ps xs)
+                         false))))
+     (= x pattern)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro match [x m]
+  `(match* ~x ~(postwalk-replace {'_ 'identity '&amp; (list 'quote '&amp;)} m)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn not-in [set]
+  (complement set))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn is-not [x]
+  (partial not= x))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn permutations
   ([coll] (permutations (count coll) coll))
   ([n coll]
