@@ -10,9 +10,10 @@
 
 Mímir aims to implement a Rete network as a base. I don't vouch for its correctness, soundness or anything, actually. Like Mímir surely would attest, using it would be somewhat headless. Here's how it looks:
 
-#### The first example from chapter 2, "The Basic Rete Algorithm" in Doorenbos:
 
 ```clojure
+  ;; The first example from chapter 2, "The Basic Rete Algorithm" in Doorenbos:
+
   (facts B1 on B2
          B1 on B3
          B1 color red
@@ -33,9 +34,9 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? B1 is on-top)
 ```
 
-#### Dudeney's SEND + MORE = MONEY:
-
 ```clojure
+  ;; Dudeney's SEND + MORE = MONEY:
+
   (integers)
 
   (rule send-more-money
@@ -52,9 +53,9 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
    (match? "9567+1085=10652")
 ```
 
-#### Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
-
 ```clojure
+  ;; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
+
   (doseq [name ["Fred" "Joe" "Bob" "Tom"]
           pants-color [:red :blue :plaid :orange]
           position (range 1 (inc 4))]
