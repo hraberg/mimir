@@ -82,12 +82,12 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
         =>
 
         #{?g1 ?g2 ?g3 ?g4})
-```
 
   (match? #{{:name "Fred", :position 1, :pants-color :orange}
             {:name "Joe", :position 2, :pants-color :blue}
             {:name "Bob", :position 4, :pants-color :plaid}
             {:name "Tom", :position 3, :pants-color :red}})
+```
 
 For more, see the [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
 
