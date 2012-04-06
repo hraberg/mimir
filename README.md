@@ -12,8 +12,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 
 
 ```clojure
-  ;; The first example from chapter 2, "The Basic Rete Algorithm" in Doorenbos:
-
+  ; The first example from chapter 2, "The Basic Rete Algorithm" in Doorenbos:
   (facts B1 on B2
          B1 on B3
          B1 color red
@@ -35,8 +34,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 ```
 
 ```clojure
-  ;; Dudeney's SEND + MORE = MONEY:
-
+  ; Dudeney's SEND + MORE = MONEY:
   (integers)
 
   (rule send-more-money
@@ -54,8 +52,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 ```
 
 ```clojure
-  ;; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
-
+  ; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
   (doseq [name ["Fred" "Joe" "Bob" "Tom"]
           pants-color [:red :blue :plaid :orange]
           position (range 1 (inc 4))]
