@@ -3047,22 +3047,27 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn working-memory [] (:working-memory @*net*))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn alpha-network [] (:alpha-network @*net*))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn beta-join-nodes [] (:beta-join-nodes @*net*))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn triplets
-  ([x] (triplets x identity identity))
-  ([[x &amp; xs] fact-fn triplet-fn]
-     (when x
-       (if ((some-fn
-             sequential? map? set? string?) x) (cons (fact-fn x) (triplets xs fact-fn triplet-fn))
-             (cons (triplet-fn (cons x (take 2 xs)))
-                   (triplets (drop 2 xs) fact-fn triplet-fn))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn triplet? [x]
-  (and (sequential? x) (= 3 (count x))))</pre></td></tr><tr><td class="docs">
+  (and (sequential? x) (= 3 (count x)) (symbol? (second x))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn is-var? [x]
   (if (symbol? x)
     (let [s (name x)]
       (or (.startsWith s &quot;?&quot;)
           (re-matches #&quot;[A-Z]+&quot; s)))
     false))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn is-matcher? [x xs]
+  (and (is-var? x) (not (symbol? (first xs)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn parser
+  ([x] (parser x identity identity))
+  ([[x &amp; xs] atom-fn triplet-fn]
+     (when x
+       (cond ((some-fn
+               sequential? map? set? string?) x) (cons (atom-fn x)
+                                                       (parser xs atom-fn triplet-fn))
+               (is-matcher? x xs) (cons (atom-fn (list 'mimir.well/match x (first xs)))
+                                        (parser (rest xs) atom-fn triplet-fn))
+               :else (cons (triplet-fn (cons x (take 2 xs)))
+                           (parser (drop 2 xs) atom-fn triplet-fn))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))</pre></td></tr><tr><td class="docs">
@@ -3075,7 +3080,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn expand-rhs [t]
   (cons 'mimir.well/assert t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def relations (reduce (fn [m rel] (assoc m rel rel))
-                       '{&lt;- mimir.well/match != not=} '[= &lt; &gt; &lt;= =&gt; not=]))</pre></td></tr><tr><td class="docs">
+                       '{&lt;- mimir.well/match = mimir.well/match != not=} '[&lt; &gt; &lt;= =&gt; not=]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn expand-lhs [t]
   (if-let [rel (relations (second t))]
     (let [[var _ &amp; [rest]] t]
@@ -3101,8 +3106,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmacro rule [name &amp; body]
   (let [[lhs _ rhs] (partition-by '#{=&gt;} body)
         [doc lhs] (split-with string? lhs)
-        expanded-lhs (macroexpand-conditions (triplets lhs expand-lhs expand-lhs))
-        rhs (triplets rhs identity expand-rhs)]
+        expanded-lhs (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
+        rhs (parser rhs identity expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (map #(%) (~name (working-memory) ~'args)))
@@ -3203,7 +3208,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmacro facts [&amp; wms]
   (when wms
     `(doall
-      (for [wm# ~(vec (triplets wms identity quote-fact))]
+      (for [wm# ~(vec (parser wms identity quote-fact))]
         (fact wm#)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn matching-wmes
   ([c] (matching-wmes c (working-memory)))
