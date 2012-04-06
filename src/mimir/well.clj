@@ -55,10 +55,13 @@
 (defn expand-rhs [t]
   (cons 'mimir.well/assert t))
 
+(def relations (reduce (fn [m rel] (assoc m rel rel))
+                       '{<- mimir.well/where != not=} '[= < > <= => not=]))
+
 (defn expand-lhs [t]
-  (if (= '<- (second t))
-    (let [[[var] <- [match]] (partition-by '#{<-} t)]
-      (list 'mimir.well/where var match))
+  (if-let [rel (relations (second t))]
+    (let [[var _ & [rest]] t]
+      (list rel var rest))
     t))
 
 (defn ellipsis

@@ -9,10 +9,10 @@
   (integers)
 
   (rule xyz
-        (< X Y)
-        (> Z 5)
-        (= Z (+ X Y))
-        (not= Z Y)
+        X < Y
+        Z > 5
+        Z = (+ X Y)
+        Z != Y
         =>
         (str X '+ Y '= Z))
 
@@ -22,7 +22,7 @@
   (integers)
 
   (rule equals
-        (= X Y)
+        X = Y
         =>
         (str X '= Y))
 
