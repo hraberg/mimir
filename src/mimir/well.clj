@@ -262,29 +262,29 @@
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
 
-(defn match* [x m]
-  (condp some [m]
+(defn match* [x pattern]
+  (condp some [pattern]
     (some-fn
      fn?
-     set?) (m x)
-     map?  (loop [[[k v] & ks] (seq m)]
+     set?) (pattern x)
+     map?  (loop [[[k v] & ks] (seq pattern)]
                   (if-not k
                     true
                     (if (match* (x k) v)
                       (recur ks)
                       false)))
-     sequential? (loop [[[k v] & ks] (map-indexed vector m)
+     sequential? (loop [[p & ps] pattern
                         [x & xs] x]
-                   (if-not k
+                   (if-not p
                      (nil? x)
-                     (if (= '& v)
+                     (if (= '& p)
                        (let [rst (vec (cons x xs))]
                          (match* rst (repeat (count rst)
-                                             (-> ks first second))))
-                       (if (match* x v)
-                         (recur ks xs)
+                                             (first ps))))
+                       (if (match* x p)
+                         (recur ps xs)
                          false))))
-     (= x m)))
+     (= x pattern)))
 
 (defmacro match [x m]
   `(match* ~x ~(postwalk-replace {'_ 'identity '& (list 'quote '&)} m)))
