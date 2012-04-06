@@ -28,12 +28,21 @@
     (cons `(* ~(long (Math/pow 10 (count xs))) ~x) (base* base xs))))
 
 (defmacro base [base & expr]
-  (let [[x [op] y [test] z] (partition-by '#{+ - * / =} expr)
-        mod-test ('{+ <= * <= - >= / >=} op)]
+  (let [[x [op] y [test] z] (partition-by '#{+ =} expr)
+        reminders (map (comp symbol (partial str "?") gensym) (reverse z))]
     (concat
-     (list `(> ~(first x) 0))
-     (list `(> ~(first y) 0))
-     (if (> (count z) (count x)) (list `(= ~(first z) 1)) (list `(> ~(first z) 0)))
-     (for [[a b c] (partition 3 (interleave (reverse x) (reverse y) (reverse z)))]
-       `(~mod-test (mod (~op ~a ~b) ~base) ~c))
-     (list `(~test (~op (+ ~@(base* base x)) (+ ~@(base* base y))) (+ ~@(base* base z)))))))
+     [`(> ~(first x) 0) `(> ~(first y) 0)]
+
+     (if (= (count z) (count x))
+       [`(> ~(first z) 0) `(= ~(last reminders) 0)]
+       [`(= ~(first z) ~(last (butlast reminders)))])
+
+     (for [r reminders]
+       `(or (= 0 ~r) (= 1 ~r)))
+
+     (for [[carry a b c c-rem] (partition 5 (interleave (cons 0 reminders)
+                                                        (reverse x)
+                                                        (reverse y)
+                                                        (reverse z)
+                                                        reminders))]
+       `(= (~op ~carry ~a ~b) (~op ~c (* ~base ~c-rem)))))))

@@ -61,9 +61,7 @@
      (let [[start more] (split-at n (take (inc n) x))]
        (str (seq start)
             (when more
-              (str "... [total: " (if (instance? clojure.lang.LazySeq x)
-                                    "(lazy-seq)"
-                                    (count x))
+              (str "... [total: " (count x)
                    "]"))))))
 
 (defn macroexpand-conditions [lhs]
@@ -229,38 +227,22 @@
     (fn? (-> am first first val))
     false))
 
-(defn all-different? [xs]
-  (distinct? xs))
+(defn all-different [& xs]
+  (apply distinct? xs))
 
-(defn different* [f [x & xs]]
-  (when x
-    (concat (for [y xs]
-              `(not= (~f ~x) (~f ~y)))
-            (different* f xs))))
+(defn different [f & xs]
+  (apply distinct? (map f xs)))
 
-(defmacro different [f & xs]
-  (different* f xs))
+(defn same*
+  ([test pred xs]
+     (test (for [x xs y (remove #{x} xs)]
+             (pred x y)))))
 
-(defn all-different* [[x & xs]]
-  (when x
-    (concat (for [y xs]
-              `(not= ~x ~y))
-            (all-different* xs))))
+(defn not-same [pred & xs]
+  (same* (partial not-any? true?) pred xs))
 
-(defmacro all-different [& xs]
-  (all-different* xs))
-
-(defn same* [f test [x & xs]]
-  (when x
-    (concat (for [y xs]
-              `(~test (~f ~x ~y)))
-            (same* f test xs))))
-
-(defmacro same [f & xs]
-  (same* f 'true? xs))
-
-(defmacro not-same [f & xs]
-  (same* f 'false? xs))
+(defn same [pred & xs]
+  (same* (partial every? true?) pred xs))
 
 (defmacro unique [xs]
   (for [[x y] (partition 2 1 xs)]
