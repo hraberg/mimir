@@ -232,28 +232,16 @@
 (defn all-different? [xs]
   (distinct? xs))
 
-(defn different* [f [x & xs]]
-  (when x
-    (concat (for [y xs]
-              `(not= (~f ~x) (~f ~y)))
-            (different* f xs))))
-
 (defmacro different [f & xs]
-  (different* f xs))
-
-(defn all-different* [[x & xs]]
-  (when x
-    (concat (for [y xs]
-              `(not= ~x ~y))
-            (all-different* xs))))
+  (distinct? (map f xs)))
 
 (defmacro all-different [& xs]
-  (all-different* xs))
+  (distinct? xs))
 
 (defn same* [f test [x & xs]]
   (when x
-    (concat (for [y xs]
-              `(~test (~f ~x ~y)))
+    (every? test (for [y xs]
+                   (f x y))
             (same* f test xs))))
 
 (defmacro same [f & xs]
@@ -325,6 +313,7 @@
      (debug "conditions" cs)
      (loop [[c1 & cs] (order-conditions cs)
             matches (dummy-beta-join-node c1 wm args)]
+       (println c1 (count matches))
        (if-not cs
          matches
          (let [c2 (first cs)]
