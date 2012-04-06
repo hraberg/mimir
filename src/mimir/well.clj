@@ -311,20 +311,6 @@
          (let [c2 (first cs)]
            (recur cs (beta-join-node c1 c2 matches wm)))))))
 
-(defmacro assert
-  ([fact]
-     `(let [fact# (list ~@(quote-non-vars fact))]
-        (fact fact#)))
-  ([id rel attr]
-     `(assert ~(list id rel attr))))
-
-(defmacro retract
-  ([fact]
-     `(let [fact# (list ~@(quote-non-vars fact))]
-        (retract* fact#)))
-  ([id rel attr]
-     `(retract ~(list id rel attr))))
-
 (defn run-once [wm productions]
   (->> productions
        (mapcat #(% wm {}))
@@ -346,7 +332,21 @@
 (defn reset []
   (reset! *net* (create-net)))
 
-; rule writing utilities
+; rule writing fns
+
+(defmacro assert
+  ([fact]
+     `(let [fact# (list ~@(quote-non-vars fact))]
+        (fact fact#)))
+  ([id rel attr]
+     `(assert ~(list id rel attr))))
+
+(defmacro retract
+  ([fact]
+     `(let [fact# (list ~@(quote-non-vars fact))]
+        (retract* fact#)))
+  ([id rel attr]
+     `(retract ~(list id rel attr))))
 
 (defn all-different [& xs]
   (apply distinct? xs))
@@ -369,10 +369,19 @@
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
 
+
+(defn not-in [set]
+  (complement set))
+
+(defn is-not [x]
+  (partial not= x))
+
 (defn bind-vars [x pattern acc]
   (if-let [var (-> pattern meta :tag)]
     (assoc acc var x)
     acc))
+
+; pattern matching
 
 (defn match*
   ([x pattern] (match* x pattern {}))
@@ -435,12 +444,6 @@
        ~rhs
        ~(when ms
           `(condm ~x ~@ms)))))
-
-(defn not-in [set]
-  (complement set))
-
-(defn is-not [x]
-  (partial not= x))
 
 (defn version []
   (-> "project.clj" clojure.java.io/resource
