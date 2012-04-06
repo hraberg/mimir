@@ -308,13 +308,33 @@
         #{x} acc
         nil)))
 
+(defn meta-walk [form]
+  (if-let [m (meta form)]
+    (list 'with-meta (walk meta-walk identity form)
+          (list 'quote m))
+    (walk meta-walk identity form)))
+
 (defmacro match [x m]
-  (letfn [(meta-walk [form] (if-let [m (meta form)]
-                              (list 'with-meta (walk meta-walk identity form)
-                                    (list 'quote m))
-                              (walk meta-walk identity form)))]
-    `(match* ~x ~(postwalk-replace {'_ identity '& (list 'quote '&)}
-                  (walk meta-walk identity m)))))
+  `(match* ~x ~(postwalk-replace
+                {'_ identity '& (list 'quote '&)}
+                (walk meta-walk identity m))))
+
+(defn bound-vars [x]
+  (let [vars (transient [])
+        var-walk (fn this [form]
+                   (when-let [v (-> form meta :tag)]
+                     (when (is-var? v)
+                       (conj! vars v)))
+                   (walk this identity form))]
+    (walk var-walk identity x)
+    (distinct (persistent! vars))))
+
+(defmacro condm [x & [lhs rhs & ms]]
+  `(let [x# ~x]
+     (if-let [{:syms ~(bound-vars lhs)} (mimir.well/match x# ~lhs)]
+       ~rhs
+       ~(when ms
+          `(condm ~x ~@ms)))))
 
 (defn not-in [set]
   (complement set))
