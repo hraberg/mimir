@@ -426,7 +426,7 @@
 (defmacro match [x m]
   `(match* ~x ~(postwalk-replace
                 {'_ identity '& (list 'quote '&)}
-                (walk meta-walk identity m))))
+                (walk identity meta-walk m))))
 
 (defn bound-vars [x]
   (let [vars (transient [])
@@ -444,6 +444,10 @@
        ~rhs
        ~(when ms
           `(condm ~x ~@ms)))))
+
+(defmacro defm [name & ms]
+  `(defn ~name [& args#]
+     (condm (if ~(not (coll? (first ms))) (first args#) args#) ~@ms)))
 
 (defn version []
   (-> "project.clj" clojure.java.io/resource
