@@ -1,7 +1,7 @@
 (ns mimir.well
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
-        [clojure.walk :only (postwalk postwalk-replace macroexpand-all)])
+        [clojure.walk :only (postwalk walk postwalk-replace macroexpand-all)])
   (:refer-clojure :exclude [assert])
   (:gen-class))
 
@@ -49,6 +49,9 @@
 (defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))
+
+(defn quote-vars [x]
+  (postwalk #(if (is-var? %) (list 'quote %) %) x))
 
 (defn vars [x]
   (let [vars (transient [])]
@@ -268,32 +271,46 @@
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
 
-(defn match* [x pattern]
+(defn bind-vars [x pattern acc]
+  (if-let [var (-> pattern meta :tag)]
+    (assoc acc var x)
+    acc))
+
+(defn match* [x pattern acc]
   (condp some [pattern]
-    (some-fn
-     fn?
-     set?) (pattern x)
-     map?  (loop [[[k v] & ks] (seq pattern)]
-                  (if-not k
-                    true
-                    (if (match* (x k) v)
-                      (recur ks)
-                      false)))
-     sequential? (loop [[p & ps] pattern
-                        [x & xs] x]
-                   (if-not p
-                     (nil? x)
-                     (if (= '& p)
-                       (let [rst (vec (cons x xs))]
-                         (match* rst (repeat (count rst)
-                                             (first ps))))
-                       (if (match* x p)
-                         (recur ps xs)
-                         false))))
-     (= x pattern)))
+    is-var? (assoc acc pattern x)
+     (some-fn
+      fn?
+      set?) (when (pattern x)
+              (bind-vars x pattern acc))
+      map? (when (map? x)
+             (loop [[k & ks] (keys pattern)
+                    acc acc]
+               (if-not k
+                 (bind-vars x pattern acc)
+                 (when-let [acc (match* (x k) (pattern k) acc)]
+                   (recur ks (bind-vars (x k) (pattern k) acc))))))
+      sequential? (when (sequential? x)
+                    (loop [[p & ps] pattern
+                           [x & xs] x
+                           acc acc]
+                      (if-not p
+                        (bind-vars x pattern acc)
+                        (if (= '& p)
+                          (let [rst (vec (cons x xs))]
+                            (when-let [acc (match* rst (repeat (count rst)
+                                                               (first ps)) acc)]
+                              (bind-vars rst (first ps) acc)))
+                          (when-let [acc (match* x p acc)]
+                            (recur ps xs (bind-vars x p acc)))))))
+    #{x} acc
+    nil))
 
 (defmacro match [x m]
-  `(match* ~x ~(postwalk-replace {'_ 'identity '& (list 'quote '&)} m)))
+  `(match* ~x ~(postwalk-replace
+                {'_ identity '& (list 'quote '&)}
+                (walk #(if (meta %) (list 'with-meta % (list 'quote (meta %))) %)
+                      identity m)) {}))
 
 (defn not-in [set]
   (complement set))
