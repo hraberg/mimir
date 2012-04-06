@@ -62,13 +62,13 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
         ?g1 <- {:name "Fred"}
 
         ?g  <- {:position (-> ?g1 :position inc)
-                 :pants-color :blue}
+                :pants-color :blue}
 
         ?g2 <- {:name "Joe"
-                 :position 2}
+                :position 2}
 
         ?g3 <- {:name "Bob"
-                 :pants-color :plaid}
+                :pants-color :plaid}
 
         ?g4 <- {:name "Tom"
                 :position (not-in #{1 4})
