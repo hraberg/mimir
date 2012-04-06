@@ -247,100 +247,6 @@
     (fn? (-> am first first val))
     false))
 
-(defn all-different [& xs]
-  (apply distinct? xs))
-
-(defn different [f & xs]
-  (apply distinct? (map f xs)))
-
-(defn same*
-  ([test pred xs]
-     (test (for [x xs y (remove #{x} xs)]
-             (pred x y)))))
-
-(defn not-same [pred & xs]
-  (same* (partial not-any? true?) pred xs))
-
-(defn same [pred & xs]
-  (same* (partial every? true?) pred xs))
-
-(defmacro unique [xs]
-  (for [[x y] (partition 2 1 xs)]
-    `(pos? (compare ~x ~y))))
-
-(defn bind-vars [x pattern acc]
-  (if-let [var (-> pattern meta :tag)]
-    (assoc acc var x)
-    acc))
-
-(defn match*
-  ([x pattern] (match* x pattern {}))
-  ([x pattern acc]
-     (condp some [pattern]
-       is-var? (assoc acc pattern x)
-       (some-fn
-        fn?
-        set?) (when (pattern x)
-                (bind-vars x pattern acc))
-        map? (when (map? x)
-               (loop [[k & ks] (keys pattern)
-                      acc acc]
-                 (if-not k
-                   (bind-vars x pattern acc)
-                   (when-let [acc (match* (x k) (pattern k) acc)]
-                     (recur ks (bind-vars (x k) (pattern k) acc))))))
-        sequential? (when (sequential? x)
-                      (loop [[p & ps] pattern
-                             [x & xs] x
-                             acc acc]
-                        (if-not p
-                          (bind-vars x pattern acc)
-                          (if (= '& p)
-                            (let [rst (vec (cons x xs))]
-                              (when-let [acc (match* rst (repeat (count rst)
-                                                                 (first ps)) acc)]
-                                (bind-vars rst (first ps) acc)))
-                            (when-let [acc (match* x p acc)]
-                              (recur ps xs (bind-vars x p acc)))))))
-        #{x} acc
-        nil)))
-
-(defn meta-walk [form]
-  (if-let [m (meta form)]
-    (list 'with-meta (walk meta-walk identity form)
-          (list 'quote m))
-    (if (is-var? form)
-      (list 'quote form)
-      (walk meta-walk identity form))))
-
-(defmacro match [x m]
-  `(match* ~x ~(postwalk-replace
-                {'_ identity '& (list 'quote '&)}
-                (walk meta-walk identity m))))
-
-(defn bound-vars [x]
-  (let [vars (transient [])
-        var-walk (fn this [form]
-                   (when-let [v (-> form meta :tag)]
-                     (when (is-var? v)
-                       (conj! vars v)))
-                   (walk this identity form))]
-    (walk var-walk identity x)
-    (distinct (persistent! vars))))
-
-(defmacro condm [x & [lhs rhs & ms]]
-  `(let [x# ~x]
-     (if-let [{:syms ~(vec (concat (vars lhs) (bound-vars lhs)))} (mimir.well/match x# ~lhs)]
-       ~rhs
-       ~(when ms
-          `(condm ~x ~@ms)))))
-
-(defn not-in [set]
-  (complement set))
-
-(defn is-not [x]
-  (partial not= x))
-
 (defn permutations
   ([coll] (permutations (count coll) coll))
   ([n coll]
@@ -439,6 +345,102 @@
 
 (defn reset []
   (reset! *net* (create-net)))
+
+; rule writing utilities
+
+(defn all-different [& xs]
+  (apply distinct? xs))
+
+(defn different [f & xs]
+  (apply distinct? (map f xs)))
+
+(defn same*
+  ([test pred xs]
+     (test (for [x xs y (remove #{x} xs)]
+             (pred x y)))))
+
+(defn not-same [pred & xs]
+  (same* (partial not-any? true?) pred xs))
+
+(defn same [pred & xs]
+  (same* (partial every? true?) pred xs))
+
+(defmacro unique [xs]
+  (for [[x y] (partition 2 1 xs)]
+    `(pos? (compare ~x ~y))))
+
+(defn bind-vars [x pattern acc]
+  (if-let [var (-> pattern meta :tag)]
+    (assoc acc var x)
+    acc))
+
+(defn match*
+  ([x pattern] (match* x pattern {}))
+  ([x pattern acc]
+     (condp some [pattern]
+       is-var? (assoc acc pattern x)
+       (some-fn
+        fn?
+        set?) (when (pattern x)
+                (bind-vars x pattern acc))
+        map? (when (map? x)
+               (loop [[k & ks] (keys pattern)
+                      acc acc]
+                 (if-not k
+                   (bind-vars x pattern acc)
+                   (when-let [acc (match* (x k) (pattern k) acc)]
+                     (recur ks (bind-vars (x k) (pattern k) acc))))))
+        sequential? (when (sequential? x)
+                      (loop [[p & ps] pattern
+                             [x & xs] x
+                             acc acc]
+                        (if-not p
+                          (bind-vars x pattern acc)
+                          (if (= '& p)
+                            (let [rst (vec (cons x xs))]
+                              (when-let [acc (match* rst (repeat (count rst)
+                                                                 (first ps)) acc)]
+                                (bind-vars rst (first ps) acc)))
+                            (when-let [acc (match* x p acc)]
+                              (recur ps xs (bind-vars x p acc)))))))
+        #{x} acc
+        nil)))
+
+(defn meta-walk [form]
+  (if-let [m (meta form)]
+    (list 'with-meta (walk meta-walk identity form)
+          (list 'quote m))
+    (if (is-var? form)
+      (list 'quote form)
+      (walk meta-walk identity form))))
+
+(defmacro match [x m]
+  `(match* ~x ~(postwalk-replace
+                {'_ identity '& (list 'quote '&)}
+                (walk meta-walk identity m))))
+
+(defn bound-vars [x]
+  (let [vars (transient [])
+        var-walk (fn this [form]
+                   (when-let [v (-> form meta :tag)]
+                     (when (is-var? v)
+                       (conj! vars v)))
+                   (walk this identity form))]
+    (walk var-walk identity x)
+    (distinct (persistent! vars))))
+
+(defmacro condm [x & [lhs rhs & ms]]
+  `(let [x# ~x]
+     (if-let [{:syms ~(vec (concat (vars lhs) (bound-vars lhs)))} (mimir.well/match x# ~lhs)]
+       ~rhs
+       ~(when ms
+          `(condm ~x ~@ms)))))
+
+(defn not-in [set]
+  (complement set))
+
+(defn is-not [x]
+  (partial not= x))
 
 (defn version []
   (-> "project.clj" clojure.java.io/resource
