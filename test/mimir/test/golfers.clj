@@ -1,5 +1,5 @@
 (ns mimir.test.golfers
-  (:use [mimir.well :only (rule run fact different)]
+  (:use [mimir.well :only (rule run fact different not-in is-not)]
         [mimir.test.common]
         [clojure.test])
   (:refer-clojure :exclude [assert]))
@@ -13,21 +13,20 @@
     (fact {:name name :position position :pants-color pants-color}))
 
   (rule find-solution
-        (= "Fred" (:name ?g1))
+        ?g1 <- {:name "Fred"}
 
-        (= (:position ?g) (inc (:position ?g1)))
-        (= :blue (:pants-color ?g))
+        ?g  <- {:position (-> ?g1 :position inc)
+                 :pants-color :blue}
 
-        (= "Joe" (:name ?g2))
-        (= 2 (:position ?g2))
+        ?g2 <- {:name "Joe"
+                 :position 2}
 
-        (= "Bob" (:name ?g3))
-        (= :plaid (:pants-color ?g3))
+        ?g3 <- {:name "Bob"
+                 :pants-color :plaid}
 
-        (= "Tom" (:name ?g4))
-        (not= 1 (:position ?g4))
-        (not= 4 (:position ?g4))
-        (not= :orange (:pants-color ?g4))
+        ?g4 <- {:name "Tom"
+                :position (not-in #{1 4})
+                :pants-color (is-not :orange)}
 
         (different :position
                    ?g1 ?g2 ?g3 ?g4)

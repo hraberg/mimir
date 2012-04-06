@@ -22,13 +22,13 @@
 (defn beta-join-nodes [] (:beta-join-nodes @*net*))
 
 (defn triplets
-  ([x] (triplets x identity))
-  ([[x & xs] post-fn]
+  ([x] (triplets x identity identity))
+  ([[x & xs] fact-fn triplet-fn]
      (when x
        (if ((some-fn
-             sequential? map? set? string?) x) (cons x (triplets xs post-fn))
-             (cons (post-fn (cons x (take 2 xs)))
-                   (triplets (drop 2 xs) post-fn))))))
+             sequential? map? set? string?) x) (cons (fact-fn x) (triplets xs fact-fn triplet-fn))
+             (cons (triplet-fn (cons x (take 2 xs)))
+                   (triplets (drop 2 xs) fact-fn triplet-fn))))))
 
 (defn triplet? [x]
   (and (sequential? x) (= 3 (count x))))
@@ -55,6 +55,12 @@
 (defn expand-rhs [t]
   (cons 'mimir.well/assert t))
 
+(defn expand-lhs [t]
+  (if (= '<- (second t))
+    (let [[[var] <- [match]] (partition-by '#{<-} t)]
+      (list 'mimir.well/where var match))
+    t))
+
 (defn ellipsis
   ([x] (ellipsis 5 x))
   ([n x]
@@ -77,8 +83,8 @@
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
-        expanded-lhs (macroexpand-conditions (triplets lhs))
-        rhs (triplets rhs expand-rhs)]
+        expanded-lhs (macroexpand-conditions (triplets lhs identity expand-lhs))
+        rhs (triplets rhs identity expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (map #(%) (~name (working-memory) ~'args)))
@@ -195,7 +201,7 @@
 (defmacro facts [& wms]
   (when wms
     `(doall
-      (for [wm# ~(vec (triplets wms quote-fact))]
+      (for [wm# ~(vec (triplets wms identity quote-fact))]
         (fact wm#)))))
 
 (defn matching-wmes
@@ -252,6 +258,22 @@
 (defmacro unique [xs]
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
+
+(defn where [vm km]
+  (loop [[[k v] & ks] (seq km)]
+    (if-not k
+      true
+      (if (if ((some-fn fn? set?) v)
+              (v (k vm))
+              (= v (k vm)))
+        (recur ks)
+        false))))
+
+(defn not-in [set]
+  (complement set))
+
+(defn is-not [x]
+  (partial not= x))
 
 (defn permutations
   ([coll] (permutations (count coll) coll))

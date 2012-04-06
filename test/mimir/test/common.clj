@@ -5,7 +5,7 @@
 
 (defmacro match? [& expected]
   (when expected
-    `(is (= (set ~(vec (triplets expected quote-fact))) (set (run))))))
+    `(is (= (set ~(vec (triplets expected identity quote-fact))) (set (run))))))
 
 (defn no-matches? []
   (match?))
@@ -13,9 +13,6 @@
 (defmacro matches? [& expected]
   (when expected
     `(is (subset? ~(set expected) (set (run))))))
-
-(defmacro ? [& expected]
-  `(match? ~@expected))
 
 (defn with-reset-fixture []
   (use-fixtures :each (fn [f] (reset) (f) (reset))))
