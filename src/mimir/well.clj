@@ -56,7 +56,7 @@
   (cons 'mimir.well/assert t))
 
 (def relations (reduce (fn [m rel] (assoc m rel rel))
-                       '{<- mimir.well/where != not=} '[= < > <= => not=]))
+                       '{<- mimir.well/match != not=} '[= < > <= => not=]))
 
 (defn expand-lhs [t]
   (if-let [rel (relations (second t))]
@@ -262,24 +262,32 @@
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
 
-(defn where [x m]
+(defn match* [x m]
   (condp some [m]
     (some-fn
      fn?
      set?) (m x)
-     (some-fn
-      map?
-      vector?) (loop [[[k v] & ks] (if (map? m)
-                                     (seq m)
-                                     (map-indexed vector m))]
-                 (if-not k
-                   true
-                   (if (= '& v)
-                     (where (rest x) ks)
-                     (if (where (x k) v)
-                       (recur ks)
-                       false))))
-      (= x m)))
+     map?  (loop [[[k v] & ks] (seq m)]
+                  (if-not k
+                    true
+                    (if (match* (x k) v)
+                      (recur ks)
+                      false)))
+     sequential? (loop [[[k v] & ks] (map-indexed vector m)
+                        [x & xs] x]
+                   (if-not k
+                     (nil? x)
+                     (if (= '& v)
+                       (let [rst (vec (cons x xs))]
+                         (match* rst (repeat (count rst)
+                                             (-> ks first second))))
+                       (if (match* x v)
+                         (recur ks xs)
+                         false))))
+     (= x m)))
+
+(defmacro match [x m]
+  `(match* ~x ~(postwalk-replace {'_ 'identity '& (list 'quote '&)} m)))
 
 (defn not-in [set]
   (complement set))
