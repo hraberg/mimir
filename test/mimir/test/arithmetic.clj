@@ -32,14 +32,12 @@
   (integers)
 
   (rule send-more-money
-        (> S 0)
-        (= M 1)
-
-        (base 10    S E N D
+        (base 10
+                    S E N D
                   + M O R E
                 = M O N E Y)
 
-        (all-different S E N D M O R Y)
+        (distinct? S E N D M O R Y)
 
         =>
 

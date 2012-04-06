@@ -25,12 +25,15 @@
 
 (defn base* [base [x & xs]]
   (when x
-    (cons `(* ~@(repeat (count xs) 10) ~x) (base* base xs))))
+    (cons `(* ~(long (Math/pow 10 (count xs))) ~x) (base* base xs))))
 
 (defmacro base [base & expr]
   (let [[x [op] y [test] z] (partition-by '#{+ - * / =} expr)
         mod-test ('{+ <= * <= - >= / >=} op)]
     (concat
+     (list `(> ~(first x) 0))
+     (list `(> ~(first y) 0))
+     (if (> (count z) (count x)) (list `(= ~(first z) 1)) (list `(> ~(first z) 0)))
      (for [[a b c] (partition 3 (interleave (reverse x) (reverse y) (reverse z)))]
        `(~mod-test (mod (~op ~a ~b) ~base) ~c))
      (list `(~test (~op (+ ~@(base* base x)) (+ ~@(base* base y))) (+ ~@(base* base z)))))))

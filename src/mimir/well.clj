@@ -47,7 +47,7 @@
 (defn vars [x]
   (let [vars (transient [])]
     (postwalk #(when (is-var? %) (conj! vars %)) x)
-    (persistent! vars)))
+    (distinct (persistent! vars))))
 
 (defn quote-fact [t]
   (list 'quote t))
@@ -230,7 +230,7 @@
     false))
 
 (defn all-different? [xs]
-  (= xs (distinct xs)))
+  (distinct? xs))
 
 (defn different* [f [x & xs]]
   (when x
@@ -241,8 +241,14 @@
 (defmacro different [f & xs]
   (different* f xs))
 
+(defn all-different* [[x & xs]]
+  (when x
+    (concat (for [y xs]
+              `(not= ~x ~y))
+            (all-different* xs))))
+
 (defmacro all-different [& xs]
-  (different* 'identity xs))
+  (all-different* xs))
 
 (defn same* [f test [x & xs]]
   (when x
@@ -310,11 +316,14 @@
 (defn dummy-beta-join-node [c wm args]
   (beta-join-node '() c #{args} wm))
 
+(defn order-conditions [cs]
+  (sort-by (comp count vars) cs))
+
 (defn check-rule
   ([cs wm] (check-rule cs wm {}))
   ([cs wm args]
      (debug "conditions" cs)
-     (loop [[c1 & cs] cs
+     (loop [[c1 & cs] (order-conditions cs)
             matches (dummy-beta-join-node c1 wm args)]
        (if-not cs
          matches
