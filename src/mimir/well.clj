@@ -408,11 +408,10 @@
                         (if-not p
                           (bind-vars x pattern acc)
                           (if (= '& p)
-                            (if-let [rst (when x (vec (cons x xs)))]
+                            (when-let [rst (when x (vec (cons x xs)))]
                               (when-let [acc (match* rst (repeat (count rst)
                                                                  (first ps)) acc)]
-                                (bind-vars rst (first ps) acc))
-                              acc)
+                                (bind-vars rst (first ps) acc)))
                             (when-let [acc (match* x p acc)]
                               (recur ps xs (bind-vars x p acc)))))))
         #{x} acc
@@ -450,7 +449,7 @@
 
 (defmacro defm [name & ms]
   `(defn ~name [& args#]
-     (condm (if ~(not (coll? (first ms))) (first args#) args#) ~@ms)))
+     (condm (if ~(not-any? coll? (take-nth 2 ms)) (first args#) args#) ~@ms)))
 
 (defn version []
   (-> "project.clj" clojure.java.io/resource
