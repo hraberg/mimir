@@ -377,7 +377,9 @@
   (partial not= x))
 
 (defn bind-vars [x pattern acc]
-  (if-let [var (-> pattern meta :tag)]
+  (if-let [var (if (is-var? pattern)
+                 pattern
+                 (-> pattern meta :tag))]
     (assoc acc var x)
     acc))
 
@@ -406,10 +408,11 @@
                         (if-not p
                           (bind-vars x pattern acc)
                           (if (= '& p)
-                            (let [rst (vec (cons x xs))]
+                            (if-let [rst (when x (vec (cons x xs)))]
                               (when-let [acc (match* rst (repeat (count rst)
                                                                  (first ps)) acc)]
-                                (bind-vars rst (first ps) acc)))
+                                (bind-vars rst (first ps) acc))
+                              acc)
                             (when-let [acc (match* x p acc)]
                               (recur ps xs (bind-vars x p acc)))))))
         #{x} acc
