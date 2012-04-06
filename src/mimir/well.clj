@@ -86,7 +86,7 @@
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
-        expanded-lhs (macroexpand-conditions (triplets lhs identity expand-lhs))
+        expanded-lhs (macroexpand-conditions (triplets lhs expand-lhs expand-lhs))
         rhs (triplets rhs identity expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
