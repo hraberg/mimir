@@ -1,11 +1,11 @@
 (ns mimir.test.common
-  (:use [mimir.well :only (run triplets quote-fact fact reset *net*)]
+  (:use [mimir.well :only (run parser quote-fact fact reset *net*)]
         [clojure.set :only (subset? difference)]
         [clojure.test]))
 
 (defmacro match? [& expected]
   (when expected
-    `(is (= (set ~(vec (triplets expected identity quote-fact))) (set (run))))))
+    `(is (= (set ~(vec (parser expected identity quote-fact))) (set (run))))))
 
 (defn no-matches? []
   (match?))

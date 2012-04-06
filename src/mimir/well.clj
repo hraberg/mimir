@@ -21,17 +21,8 @@
 
 (defn beta-join-nodes [] (:beta-join-nodes @*net*))
 
-(defn triplets
-  ([x] (triplets x identity identity))
-  ([[x & xs] fact-fn triplet-fn]
-     (when x
-       (if ((some-fn
-             sequential? map? set? string?) x) (cons (fact-fn x) (triplets xs fact-fn triplet-fn))
-             (cons (triplet-fn (cons x (take 2 xs)))
-                   (triplets (drop 2 xs) fact-fn triplet-fn))))))
-
 (defn triplet? [x]
-  (and (sequential? x) (= 3 (count x))))
+  (and (sequential? x) (= 3 (count x)) (symbol? (second x))))
 
 (defn is-var? [x]
   (if (symbol? x)
@@ -39,6 +30,21 @@
       (or (.startsWith s "?")
           (re-matches #"[A-Z]+" s)))
     false))
+
+(defn is-matcher? [x xs]
+  (and (is-var? x) (not (symbol? (first xs)))))
+
+(defn parser
+  ([x] (parser x identity identity))
+  ([[x & xs] atom-fn triplet-fn]
+     (when x
+       (cond ((some-fn
+               sequential? map? set? string?) x) (cons (atom-fn x)
+                                                       (parser xs atom-fn triplet-fn))
+               (is-matcher? x xs) (cons (atom-fn (list 'mimir.well/match x (first xs)))
+                                        (parser (rest xs) atom-fn triplet-fn))
+               :else (cons (triplet-fn (cons x (take 2 xs)))
+                           (parser (drop 2 xs) atom-fn triplet-fn))))))
 
 (defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
@@ -86,8 +92,8 @@
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
-        expanded-lhs (macroexpand-conditions (triplets lhs expand-lhs expand-lhs))
-        rhs (triplets rhs identity expand-rhs)]
+        expanded-lhs (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
+        rhs (parser rhs identity expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (map #(%) (~name (working-memory) ~'args)))
@@ -204,7 +210,7 @@
 (defmacro facts [& wms]
   (when wms
     `(doall
-      (for [wm# ~(vec (triplets wms identity quote-fact))]
+      (for [wm# ~(vec (parser wms identity quote-fact))]
         (fact wm#)))))
 
 (defn matching-wmes
