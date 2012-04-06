@@ -307,10 +307,12 @@
     nil))
 
 (defmacro match [x m]
-  `(match* ~x ~(postwalk-replace
-                {'_ identity '& (list 'quote '&)}
-                (walk #(if (meta %) (list 'with-meta % (list 'quote (meta %))) %)
-                      identity m)) {}))
+  (letfn [(meta-walk [form] (if-let [tag (-> form meta :tag)]
+                              (list 'with-meta (walk meta-walk identity form)
+                                    (list 'quote {:tag tag}))
+                              (walk meta-walk identity form)))]
+    `(match* ~x ~(postwalk-replace {'_ identity '& (list 'quote '&)}
+                  (walk meta-walk identity m)) {})))
 
 (defn not-in [set]
   (complement set))
