@@ -262,15 +262,22 @@
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
 
-(defn where [vm km]
-  (loop [[[k v] & ks] (seq km)]
-    (if-not k
-      true
-      (if (if ((some-fn fn? set?) v)
-              (v (k vm))
-              (= v (k vm)))
-        (recur ks)
-        false))))
+(defn where [x m]
+  (condp some [m]
+    (some-fn
+     fn?
+     set?) (m x)
+     (some-fn
+      map?
+      vector?) (loop [[[k v] & ks] (if (map? m)
+                                     (seq m)
+                                     (map-indexed vector m))]
+                 (if-not k
+                   true
+                   (if (where (k x) v)
+                     (recur ks)
+                     false)))
+      (= x m)))
 
 (defn not-in [set]
   (complement set))
