@@ -56,7 +56,7 @@
   (cons 'mimir.well/assert t))
 
 (def relations (reduce (fn [m rel] (assoc m rel rel))
-                       '{<- mimir.well/match != not=} '[= < > <= => not=]))
+                       '{<- mimir.well/match = mimir.well/match != not=} '[< > <= => not=]))
 
 (defn expand-lhs [t]
   (if-let [rel (relations (second t))]
