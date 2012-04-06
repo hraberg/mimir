@@ -274,9 +274,11 @@
                                      (map-indexed vector m))]
                  (if-not k
                    true
-                   (if (where (k x) v)
-                     (recur ks)
-                     false)))
+                   (if (= '& v)
+                     (where (rest x) ks)
+                     (if (where (x k) v)
+                       (recur ks)
+                       false))))
       (= x m)))
 
 (defn not-in [set]
