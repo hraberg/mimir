@@ -10,7 +10,7 @@
 
 Mímir aims to implement a Rete network as a base. I don't vouch for its correctness, soundness or anything, actually. Like Mímir surely would attest, using it would be somewhat headless. Here's how it looks:
 
-#### The first example from chapter 2 in Doorenbos, "The Basic Rete Algorithm":
+#### The first example from chapter 2, "The Basic Rete Algorithm" in Doorenbos:
 
 ```clojure
   (facts B1 on B2
@@ -33,7 +33,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? B1 is on-top)
 ```
 
-#### SEND + MORE = MONEY:
+#### Dudeney's SEND + MORE = MONEY:
 
 ```clojure
   (integers)
