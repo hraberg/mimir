@@ -41,7 +41,7 @@
        (cond ((some-fn
                sequential? map? set? string?) x) (cons (atom-fn x)
                                                        (parser xs atom-fn triplet-fn))
-               (is-matcher? x xs) (cons (atom-fn (list 'mimir.well/match x (first xs)))
+               (is-matcher? x xs) (cons (atom-fn (list 'mimir.well/match* x (first xs)))
                                         (parser (rest xs) atom-fn triplet-fn))
                :else (cons (triplet-fn (cons x (take 2 xs)))
                            (parser (drop 2 xs) atom-fn triplet-fn))))))
@@ -65,7 +65,7 @@
   (cons 'mimir.well/assert t))
 
 (def relations (reduce (fn [m rel] (assoc m rel rel))
-                       '{<- mimir.well/match = mimir.well/match != not=} '[< > <= => not=]))
+                       '{<- mimir.well/match* = mimir.well/match* != not=} '[< > <= => not=]))
 
 (defn expand-lhs [t]
   (if-let [rel (relations (second t))]
@@ -276,43 +276,45 @@
     (assoc acc var x)
     acc))
 
-(defn match* [x pattern acc]
-  (condp some [pattern]
-    is-var? (assoc acc pattern x)
-     (some-fn
-      fn?
-      set?) (when (pattern x)
-              (bind-vars x pattern acc))
-      map? (when (map? x)
-             (loop [[k & ks] (keys pattern)
-                    acc acc]
-               (if-not k
-                 (bind-vars x pattern acc)
-                 (when-let [acc (match* (x k) (pattern k) acc)]
-                   (recur ks (bind-vars (x k) (pattern k) acc))))))
-      sequential? (when (sequential? x)
-                    (loop [[p & ps] pattern
-                           [x & xs] x
-                           acc acc]
-                      (if-not p
-                        (bind-vars x pattern acc)
-                        (if (= '& p)
-                          (let [rst (vec (cons x xs))]
-                            (when-let [acc (match* rst (repeat (count rst)
-                                                               (first ps)) acc)]
-                              (bind-vars rst (first ps) acc)))
-                          (when-let [acc (match* x p acc)]
-                            (recur ps xs (bind-vars x p acc)))))))
-    #{x} acc
-    nil))
+(defn match*
+  ([x pattern] (match* x pattern {}))
+  ([x pattern acc]
+     (condp some [pattern]
+       is-var? (assoc acc pattern x)
+       (some-fn
+        fn?
+        set?) (when (pattern x)
+                (bind-vars x pattern acc))
+        map? (when (map? x)
+               (loop [[k & ks] (keys pattern)
+                      acc acc]
+                 (if-not k
+                   (bind-vars x pattern acc)
+                   (when-let [acc (match* (x k) (pattern k) acc)]
+                     (recur ks (bind-vars (x k) (pattern k) acc))))))
+        sequential? (when (sequential? x)
+                      (loop [[p & ps] pattern
+                             [x & xs] x
+                             acc acc]
+                        (if-not p
+                          (bind-vars x pattern acc)
+                          (if (= '& p)
+                            (let [rst (vec (cons x xs))]
+                              (when-let [acc (match* rst (repeat (count rst)
+                                                                 (first ps)) acc)]
+                                (bind-vars rst (first ps) acc)))
+                            (when-let [acc (match* x p acc)]
+                              (recur ps xs (bind-vars x p acc)))))))
+        #{x} acc
+        nil)))
 
 (defmacro match [x m]
-  (letfn [(meta-walk [form] (if-let [tag (-> form meta :tag)]
+  (letfn [(meta-walk [form] (if-let [m (meta form)]
                               (list 'with-meta (walk meta-walk identity form)
-                                    (list 'quote {:tag tag}))
+                                    (list 'quote m))
                               (walk meta-walk identity form)))]
     `(match* ~x ~(postwalk-replace {'_ identity '& (list 'quote '&)}
-                  (walk meta-walk identity m)) {})))
+                  (walk meta-walk identity m)))))
 
 (defn not-in [set]
   (complement set))
