@@ -81,6 +81,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
                    ?g1 ?g2 ?g3 ?g4)
 
         (#{?g1 ?g2 ?g3 ?g4} ?g)
+
         =>
 
         #{?g1 ?g2 ?g3 ?g4})
