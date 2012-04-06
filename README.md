@@ -52,7 +52,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
    (match? "9567+1085=10652")
 ```
 
-#### Rosencrantz' problem form chapter one in Jess in Action:
+#### Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
 
 ```clojure
   (doseq [name ["Fred" "Joe" "Bob" "Tom"]
