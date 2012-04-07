@@ -21,10 +21,12 @@
     (assoc acc var x)
     acc))
 
+(defn preserve-meta [form meta]
+  (list 'with-meta form (list 'quote meta)))
+
 (defn meta-walk [form]
   (if-let [m (meta form)]
-    (list 'with-meta (walk meta-walk identity form)
-          (list 'quote m))
+    (preserve-meta (walk meta-walk identity form) m)
     (if (*match-var?* form)
       (list 'quote form)
       (walk meta-walk identity form))))
@@ -98,16 +100,19 @@
          #{x} acc
          nil)))
 
+(defn prepare-matcher [m]
+  (postwalk-replace
+   {'_ identity '& (list 'quote '&)}
+   (preserve-meta (walk identity meta-walk m) (meta m))))
+
 (defmacro match [x m]
-  `(match* ~x ~(postwalk-replace
-                {'_ identity '& (list 'quote '&)}
-                (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))
+  `(match* ~x ~(prepare-matcher m)))
 
 (defmacro condm* [[lhs rhs & ms]]
   `(if-let [{:syms ~(vec (concat (filter-walk *match-var?* lhs)
                                  (bound-vars lhs)
                                  (map *var-symbol* (regex-vars lhs))))}
-            (mimir.well/match ~'*match* ~lhs)]
+            (mimir.match/match ~'*match* ~lhs)]
      ~rhs
      ~(when ms
         `(condm* ~ms))))

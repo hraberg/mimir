@@ -2,7 +2,7 @@
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)]
-        [mimir.match :only (filter-walk match)])
+        [mimir.match :only (filter-walk)])
   (:refer-clojure :exclude [assert])
   (:gen-class))
 
