@@ -84,7 +84,7 @@
   (loop [[c & cs] (map macroexpand lhs)
          acc []]
     (if-not c
-        acc
+      acc
       (recur cs
              (if (every? seq? c)
                (into acc c)
@@ -110,8 +110,8 @@
                          ~@rhs)))))]
        (debug "defining rule" '~name)
        (when-not (= '~lhs '~expanded-lhs)
-          (debug "expanded" '~lhs)
-          (debug "    into" '~expanded-lhs))
+         (debug "expanded" '~lhs)
+         (debug "    into" '~expanded-lhs))
        (alter-meta! f# merge {:lhs '~lhs :rhs '~rhs :doc ~(apply str doc)})
        (swap! *net* update-in [:productions] conj f#)
        f#)))
@@ -377,14 +377,15 @@
 (defn is-not [x]
   (partial not= x))
 
+
+; pattern matching
+
 (defn bind-vars [x pattern acc]
   (if-let [var (if (is-var? pattern)
                  pattern
                  (-> pattern meta :tag))]
     (assoc acc var x)
     acc))
-
-; pattern matching
 
 (defn meta-walk [form]
   (if-let [m (meta form)]
@@ -474,9 +475,21 @@
        ~(when ms
           `(condm ~x ~@ms)))))
 
+(defn single-arg? [ms]
+  (not-any? coll? (take-nth 2 ms)))
+
+(defmacro fm [& ms]
+  `(fn ~'this [& ~'args]
+     (condm (if ~(single-arg? ms) (first ~'args) ~'args) ~@ms)))
+
 (defmacro defm [name & ms]
-  `(defn ~name [& args#]
-     (condm (if ~(not-any? coll? (take-nth 2 ms)) (first args#) args#) ~@ms)))
+  (let [[doc ms] (split-with string? ms)]
+    `(do
+       (defn ~name [& ~'args]
+         (condm (if ~(single-arg? ms) (first ~'args) ~'args) ~@ms))
+       (when '~doc
+         (alter-meta! (var ~name) merge {:doc (apply str '~doc)}))
+       ~name)))
 
 (defn version []
   (-> "project.clj" clojure.java.io/resource
