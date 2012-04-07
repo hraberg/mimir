@@ -51,7 +51,7 @@
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))
 
-(defn vars [x] (filter-walk x is-var?))
+(defn vars [x] (filter-walk is-var? x))
 
 (defn quote-fact [t]
   (list 'quote t))

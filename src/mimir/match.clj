@@ -5,9 +5,9 @@
   (:import [java.util.regex Pattern]))
 
 (defn filter-walk
-  [x pred]
+  [pred coll]
   (let [acc (transient [])]
-    (postwalk #(when (pred %) (conj! acc %)) x)
+    (postwalk #(when (pred %) (conj! acc %)) coll)
     (distinct (persistent! acc))))
 
 (def ^:dynamic *match-var?* symbol?)
@@ -104,7 +104,7 @@
                 (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))
 
 (defmacro condm* [[lhs rhs & ms]]
-  `(if-let [{:syms ~(vec (concat (filter-walk lhs *match-var?*)
+  `(if-let [{:syms ~(vec (concat (filter-walk *match-var?* lhs)
                                  (bound-vars lhs)
                                  (map *var-symbol* (regex-vars lhs))))}
             (mimir.well/match ~'*match* ~lhs)]
