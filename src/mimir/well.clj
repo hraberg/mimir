@@ -51,12 +51,13 @@
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))
 
-(defn vars
-  ([x] (vars x is-var?))
-  ([x pred]
-     (let [vars (transient [])]
-       (postwalk #(when (pred %) (conj! vars %)) x)
-       (distinct (persistent! vars)))))
+(defn filter-walk
+  [x pred]
+  (let [acc (transient [])]
+    (postwalk #(when (pred %) (conj! acc %)) x)
+    (distinct (persistent! acc))))
+
+(defn vars [x] (filter-walk x is-var?))
 
 (defn quote-fact [t]
   (list 'quote t))
@@ -476,7 +477,7 @@
                 (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))
 
 (defmacro condm* [[lhs rhs & ms]]
-  `(if-let [{:syms ~(vec (concat (vars lhs is-match-var?)
+  `(if-let [{:syms ~(vec (concat (filter-walk lhs is-match-var?)
                                  (bound-vars lhs)
                                  (map match-var-sym (regex-vars lhs))))}
             (mimir.well/match ~'*match* ~lhs)]
