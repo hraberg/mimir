@@ -51,10 +51,12 @@
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))
 
-(defn vars [x]
-  (let [vars (transient [])]
-    (postwalk #(when (is-var? %) (conj! vars %)) x)
-    (distinct (persistent! vars))))
+(defn vars
+  ([x] (vars x is-var?))
+  ([x pred]
+     (let [vars (transient [])]
+       (postwalk #(when (pred %) (conj! vars %)) x)
+       (distinct (persistent! vars)))))
 
 (defn quote-fact [t]
   (list 'quote t))
@@ -378,8 +380,14 @@
 
 ; pattern matching
 
+(defn is-match-var? [x]
+  (symbol? x))
+
+(defn match-var-sym [x]
+  (symbol x))
+
 (defn bind-vars [x pattern acc]
-  (if-let [var (if (is-var? pattern)
+  (if-let [var (if (is-match-var? pattern)
                  pattern
                  (-> pattern meta :tag))]
     (assoc acc var x)
@@ -389,7 +397,7 @@
   (if-let [m (meta form)]
     (list 'with-meta (walk meta-walk identity form)
           (list 'quote m))
-    (if (is-var? form)
+    (if (is-match-var? form)
       (list 'quote form)
       (walk meta-walk identity form))))
 
@@ -397,7 +405,7 @@
   (let [vars (transient [])
         var-walk (fn this [form]
                    (when-let [v (-> form meta :tag)]
-                     (when (is-var? v)
+                     (when (is-match-var? v)
                        (conj! vars v)))
                    form)]
     (prewalk var-walk x)
@@ -418,13 +426,13 @@
   ([x pattern] (match* x pattern {}))
   ([x pattern acc]
      (condp some [pattern]
-       is-var? (assoc acc pattern x)
+       is-match-var? (assoc acc pattern x)
        (partial
         instance?
         Pattern) (let [re (re-matcher pattern (str x))
                        groups (regex-vars pattern)]
                    (when (.matches re)
-                     (reduce #(assoc % (var-sym %2)
+                     (reduce #(assoc % (match-var-sym %2)
                                      (.group re (str %2)))
                              acc groups)))
         (partial
@@ -468,9 +476,9 @@
                 (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))
 
 (defmacro condm* [[lhs rhs & ms]]
-  `(if-let [{:syms ~(vec (concat (vars lhs)
-                                (bound-vars lhs)
-                                (map var-sym (regex-vars lhs))))}
+  `(if-let [{:syms ~(vec (concat (vars lhs is-match-var?)
+                                 (bound-vars lhs)
+                                 (map match-var-sym (regex-vars lhs))))}
             (mimir.well/match ~'*match* ~lhs)]
      ~rhs
      ~(when ms
