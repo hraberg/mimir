@@ -91,22 +91,33 @@
                          (if-not p
                            (bind-vars x pattern acc)
                            (if (= '& p)
-                             (when-let [rst (when y (vec (cons y ys)))]
-                               (when-let [acc (match* rst (repeat (count rst)
-                                                                  (first ps)) acc)]
+                             (let [rst (when y (vec (cons y ys)))]
+                               (when-let [acc (if (and (nil? rst) ((first ps) rst)) acc
+                                                  (match* rst (repeat (count rst)
+                                                                      (first ps)) acc))]
                                  (bind-vars rst (first ps) acc)))
                              (when-let [acc (match* y p acc)]
                                (recur ps ys (bind-vars y p acc)))))))
          #{x} acc
          nil)))
 
-(defn prepare-matcher [m]
-  (postwalk-replace
-   {'_ identity '& (list 'quote '&)}
-   (preserve-meta (walk identity meta-walk m) (meta m))))
+(defn truth [& _] true)
+
+(defn unquote-vars-in-scope [&env form]
+  (if &env
+    (postwalk #(if (and (list? %)
+                        (= 'quote (first %))
+                        (&env (second %)))
+                 (second %) %) form)
+    form))
+
+(defn prepare-matcher [m &env]
+  (->> (preserve-meta (walk identity meta-walk m) (meta m))
+       (postwalk-replace {'_ truth :else truth})
+       (unquote-vars-in-scope &env)))
 
 (defmacro match [x m]
-  `(match* ~x ~(prepare-matcher m)))
+  `(match* ~x ~(prepare-matcher m &env)))
 
 (defn all-vars [lhs]
   (vec (concat (filter-walk *match-var?* lhs)
