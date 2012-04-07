@@ -16,11 +16,8 @@
 
 (def ^:dynamic *net* (atom (create-net)))
 
-(defn working-memory [] (:working-memory @*net*))
-
-(defn alpha-network [] (:alpha-network @*net*))
-
-(defn beta-join-nodes [] (:beta-join-nodes @*net*))
+(doseq [k (keys @*net*)]
+  (eval `(defn ~(symbol (name k)) [] (~k @*net*))))
 
 (defn triplet? [x]
   (and (sequential? x) (= 3 (count x)) (symbol? (second x))))
@@ -306,10 +303,11 @@
          (let [c2 (first cs)]
            (recur cs (beta-join-node c1 c2 matches wm)))))))
 
-(defn run-once [wm productions]
-  (->> productions
-       (mapcat #(% wm {}))
-       set))
+(defn run-once
+  ([] (run-once (working-memory) (productions)))
+  ([wm productions]
+     (->> productions
+          (mapcat #(% wm {})))))
 
 (defn run
   ([] (run *net*))
@@ -318,7 +316,7 @@
        (loop [wm (working-memory)
               productions (:productions @net)
               acc #{}]
-         (let [acc (union (run-once wm productions) acc)]
+         (let [acc (union (set (run-once wm productions)) acc)]
            (if (seq (difference (working-memory) wm))
              (recur (working-memory) productions acc)
              acc))))))
