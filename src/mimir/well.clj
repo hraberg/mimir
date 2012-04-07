@@ -1,7 +1,7 @@
 (ns mimir.well
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
-        [clojure.walk :only (postwalk walk postwalk-replace macroexpand-all)])
+        [clojure.walk :only (postwalk prewalk walk postwalk-replace macroexpand-all)])
   (:refer-clojure :exclude [assert])
   (:import [java.util.regex Pattern])
   (:gen-class))
@@ -399,8 +399,8 @@
                    (when-let [v (-> form meta :tag)]
                      (when (is-var? v)
                        (conj! vars v)))
-                   (walk this identity form))]
-    (walk var-walk identity x)
+                   form)]
+    (prewalk var-walk x)
     (distinct (persistent! vars))))
 
 (defn regex-vars [x]
@@ -431,37 +431,41 @@
          instance?
          Class) (when (instance? pattern x)
                   acc)
-       (some-fn
-        fn?
-        set?) (when (pattern x)
-                (bind-vars x pattern acc))
-        map? (when (map? x)
-               (loop [[k & ks] (keys pattern)
-                      acc acc]
-                 (if-not k
-                   (bind-vars x pattern acc)
-                   (when-let [acc (match* (x k) (pattern k) acc)]
-                     (recur ks (bind-vars (x k) (pattern k) acc))))))
-        sequential? (when (sequential? x)
-                      (loop [[p & ps] pattern
-                             [x & xs] x
-                             acc acc]
-                        (if-not p
-                          (bind-vars x pattern acc)
-                          (if (= '& p)
-                            (when-let [rst (when x (vec (cons x xs)))]
-                              (when-let [acc (match* rst (repeat (count rst)
-                                                                 (first ps)) acc)]
-                                (bind-vars rst (first ps) acc)))
-                            (when-let [acc (match* x p acc)]
-                              (recur ps xs (bind-vars x p acc)))))))
-        #{x} acc
-        nil)))
+         fn? (when (pattern x)
+               (bind-vars x pattern acc))
+         set? (loop [[k & ks] (seq pattern)
+                     acc acc]
+                (when k
+                  (if-let [acc (match* x k acc)]
+                    (bind-vars x pattern acc)
+                    (recur ks acc))))
+         map? (when (map? x)
+                (loop [[k & ks] (keys pattern)
+                       acc acc]
+                  (if-not k
+                    (bind-vars x pattern acc)
+                    (when-let [acc (match* (x k) (pattern k) acc)]
+                      (recur ks (bind-vars (x k) (pattern k) acc))))))
+         sequential? (when (sequential? x)
+                       (loop [[p & ps] pattern
+                              [y & ys] x
+                              acc acc]
+                         (if-not p
+                           (bind-vars x pattern acc)
+                           (if (= '& p)
+                             (when-let [rst (when y (vec (cons y ys)))]
+                               (when-let [acc (match* rst (repeat (count rst)
+                                                                  (first ps)) acc)]
+                                 (bind-vars rst (first ps) acc)))
+                             (when-let [acc (match* y p acc)]
+                               (recur ps ys (bind-vars y p acc)))))))
+         #{x} acc
+         nil)))
 
 (defmacro match [x m]
   `(match* ~x ~(postwalk-replace
                 {'_ identity '& (list 'quote '&)}
-                (walk identity meta-walk m))))
+                (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))
 
 (defmacro condm [x & [lhs rhs & ms]]
   `(let [~'*match* ~x]
