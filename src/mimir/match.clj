@@ -143,11 +143,15 @@
   `(fn ~'this [& ~'args]
      (condm (if ~(single-arg? ms) (first ~'args) ~'args) ~@ms)))
 
-(defmacro defm [name & ms]
-  (let [[doc ms] (split-with string? ms)]
+(defmacro defm [name args & ms]
+  (let [[doc ms] (split-with string? ms)
+        [_ _ [match-var & _ ]] (partition-by '#{&} args)]
     `(do
-       (defn ~name [& ~'args]
-         (condm (if ~(single-arg? ms) (first ~'args) ~'args) ~@ms))
-       (when '~doc
-         (alter-meta! (var ~name) merge {:doc (apply str '~doc)}))
+       (defn ~name ~args
+         ~(when (seq ms)
+            `(condm ~(list 'first (if (single-arg? ms)
+                                    (list 'first match-var)
+                                    match-var)) ~@ms)))
+       (alter-meta! (var ~name) merge {:doc (apply str ~doc)})
        ~name)))
+
