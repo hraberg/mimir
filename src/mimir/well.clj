@@ -467,15 +467,18 @@
                 {'_ identity '& (list 'quote '&)}
                 (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))
 
-(defmacro condm [x & [lhs rhs & ms]]
+(defmacro condm* [[lhs rhs & ms]]
+  `(if-let [{:syms ~(vec (concat (vars lhs)
+                                (bound-vars lhs)
+                                (map var-sym (regex-vars lhs))))}
+            (mimir.well/match ~'*match* ~lhs)]
+     ~rhs
+     ~(when ms
+        `(condm* ~ms))))
+
+(defmacro condm [x & ms]
   `(let [~'*match* ~x]
-     (if-let [{:syms ~(vec (concat (vars lhs)
-                                   (bound-vars lhs)
-                                   (map var-sym (regex-vars lhs))))}
-              (mimir.well/match ~'*match* ~lhs)]
-       ~rhs
-       ~(when ms
-          `(condm ~x ~@ms)))))
+     (condm* ~ms)))
 
 (defn single-arg? [ms]
   (not-any? coll? (take-nth 2 ms)))
