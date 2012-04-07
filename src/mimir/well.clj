@@ -370,13 +370,11 @@
   (for [[x y] (partition 2 1 xs)]
     `(pos? (compare ~x ~y))))
 
-
 (defn not-in [set]
   (complement set))
 
 (defn is-not [x]
   (partial not= x))
-
 
 ; pattern matching
 
