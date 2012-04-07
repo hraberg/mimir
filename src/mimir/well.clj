@@ -97,14 +97,13 @@
                 ([~'args] (map #(%) (~name (working-memory) ~'args)))
                 ([~'wm ~'args]
                    (debug "rule" '~name '~*ns*)
-                   (doall
-                    (for [vars# (binding [*ns* '~*ns*]
-                                  (check-rule '~(vec expanded-lhs) ~'wm ~'args))
-                          :let [{:syms ~(vars rhs)} vars#
-                                ~'*vars* (map val (sort-by key vars#))]]
-                      #(do
-                         (debug "rhs" vars#)
-                         ~@rhs)))))]
+                   (for [vars# (binding [*ns* '~*ns*]
+                                 (check-rule '~(vec expanded-lhs) ~'wm ~'args))
+                         :let [{:syms ~(vars rhs)} vars#
+                               ~'*vars* (map val (sort-by key vars#))]]
+                     (do
+                       (debug "rhs" vars#)
+                        ~@rhs))))]
        (debug "defining rule" '~name)
        (when-not (= '~lhs '~expanded-lhs)
          (debug "expanded" '~lhs)
@@ -268,15 +267,13 @@
     (debug " args" args)
     (debug " known args" join-on "- need to find" needed-args)
     (debug " permutations of wm" (ellipsis permutated-wm))
-    (mapcat
-     (fn [m]
-       (for [wmes permutated-wm
-             :when (try
-                     (invoker pred m wmes)
-                     (catch RuntimeException e
-                       (debug " threw non fatal" e)))]
-         (merge m (zipmap needed-args wmes))))
-     c1-am)))
+    (for [m c1-am
+          wmes permutated-wm
+          :when (try
+                  (invoker pred m wmes)
+                  (catch RuntimeException e
+                    (debug " threw non fatal" e)))]
+      (merge m (zipmap needed-args wmes)))))
 
 (defn beta-join-node [c1 c2 c1-am wm]
   (let [c2-am (alpha-memory c2 wm)]
@@ -312,7 +309,6 @@
 (defn run-once [wm productions]
   (->> productions
        (mapcat #(% wm {}))
-       (map #(%))
        set))
 
 (defn run
