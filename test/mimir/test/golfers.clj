@@ -1,5 +1,5 @@
 (ns mimir.test.golfers
-  (:use [mimir.well :only (rule run fact different not-in is-not match)]
+  (:use [mimir.well :only (rule run fact different not-in is-not)]
         [mimir.test.common]
         [clojure.test])
   (:refer-clojure :exclude [assert]))
