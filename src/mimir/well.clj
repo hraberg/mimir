@@ -3,6 +3,7 @@
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk walk postwalk-replace macroexpand-all)])
   (:refer-clojure :exclude [assert])
+  (:import [java.util.regex Pattern])
   (:gen-class))
 
 (defn create-net []
@@ -385,11 +386,52 @@
 
 ; pattern matching
 
+(defn meta-walk [form]
+  (if-let [m (meta form)]
+    (list 'with-meta (walk meta-walk identity form)
+          (list 'quote m))
+    (if (is-var? form)
+      (list 'quote form)
+      (walk meta-walk identity form))))
+
+(defn bound-vars [x]
+  (let [vars (transient [])
+        var-walk (fn this [form]
+                   (when-let [v (-> form meta :tag)]
+                     (when (is-var? v)
+                       (conj! vars v)))
+                   (walk this identity form))]
+    (walk var-walk identity x)
+    (distinct (persistent! vars))))
+
+(defn regex-vars [x]
+  (let [vars (transient [])
+        regex-walk (fn this [form]
+                     (when (instance? Pattern form)
+                       (reduce conj! vars
+                               (map (comp symbol second)
+                                    (re-seq #"\(\?<(.+?)>.*?\)" (str form)))))
+                     form)]
+    (postwalk regex-walk x)
+    (distinct (persistent! vars))))
+
 (defn match*
   ([x pattern] (match* x pattern {}))
   ([x pattern acc]
      (condp some [pattern]
        is-var? (assoc acc pattern x)
+       (partial
+        instance?
+        Pattern) (let [re (re-matcher pattern (str x))
+                       groups (regex-vars pattern)]
+                   (when (.matches re)
+                     (reduce #(assoc % (var-sym %2)
+                                     (.group re (str %2)))
+                             acc groups)))
+        (partial
+         instance?
+         Class) (when (instance? pattern x)
+                  acc)
        (some-fn
         fn?
         set?) (when (pattern x)
@@ -417,32 +459,17 @@
         #{x} acc
         nil)))
 
-(defn meta-walk [form]
-  (if-let [m (meta form)]
-    (list 'with-meta (walk meta-walk identity form)
-          (list 'quote m))
-    (if (is-var? form)
-      (list 'quote form)
-      (walk meta-walk identity form))))
-
 (defmacro match [x m]
   `(match* ~x ~(postwalk-replace
                 {'_ identity '& (list 'quote '&)}
                 (walk identity meta-walk m))))
 
-(defn bound-vars [x]
-  (let [vars (transient [])
-        var-walk (fn this [form]
-                   (when-let [v (-> form meta :tag)]
-                     (when (is-var? v)
-                       (conj! vars v)))
-                   (walk this identity form))]
-    (walk var-walk identity x)
-    (distinct (persistent! vars))))
-
 (defmacro condm [x & [lhs rhs & ms]]
-  `(let [x# ~x]
-     (if-let [{:syms ~(vec (concat (vars lhs) (bound-vars lhs)))} (mimir.well/match x# ~lhs)]
+  `(let [~'*match* ~x]
+     (if-let [{:syms ~(vec (concat (vars lhs)
+                                   (bound-vars lhs)
+                                   (map var-sym (regex-vars lhs))))}
+              (mimir.well/match ~'*match* ~lhs)]
        ~rhs
        ~(when ms
           `(condm ~x ~@ms)))))
