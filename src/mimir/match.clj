@@ -108,18 +108,22 @@
 (defmacro match [x m]
   `(match* ~x ~(prepare-matcher m)))
 
-(defmacro condm* [[lhs rhs & ms]]
-  `(if-let [{:syms ~(vec (concat (filter-walk *match-var?* lhs)
-                                 (bound-vars lhs)
-                                 (map *var-symbol* (regex-vars lhs))))}
-            (mimir.match/match ~'*match* ~lhs)]
+(defn all-vars [lhs]
+  (vec (concat (filter-walk *match-var?* lhs)
+               (bound-vars lhs)
+               (map *var-symbol* (regex-vars lhs)))))
+
+(defmacro condm* [match-var [lhs rhs & ms]]
+  `(if-let [{:syms ~(all-vars lhs)}
+            (mimir.match/match ~match-var ~lhs)]
      ~rhs
      ~(when ms
-        `(condm* ~ms))))
+        `(condm* ~match-var ~ms))))
 
 (defmacro condm [x & ms]
-  `(let [~'*match* ~x]
-     (condm* ~ms)))
+  (let [match-var (if-let [v (-> x meta :tag)] v '*match*)]
+    `(let [~match-var ~(with-meta x {})]
+       (condm* ~match-var ~ms))))
 
 (defn single-arg? [ms]
   (not-any? coll? (take-nth 2 ms)))
