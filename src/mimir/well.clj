@@ -91,7 +91,7 @@
         rhs (parser rhs identity expand-rhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
-                ([~'args] (map #(%) (~name (working-memory) ~'args)))
+                ([~'args] (~name (working-memory) ~'args))
                 ([~'wm ~'args]
                    (debug "rule" '~name '~*ns*)
                    (for [vars# (binding [*ns* '~*ns*]
