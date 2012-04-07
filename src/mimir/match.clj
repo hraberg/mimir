@@ -10,7 +10,7 @@
     (postwalk #(when (pred %) (conj! acc %)) coll)
     (distinct (persistent! acc))))
 
-(def ^:dynamic *match-var?* symbol?)
+(def ^:dynamic *match-var?* #(and (symbol? %) (not (resolve %))))
 
 (def ^:dynamic *var-symbol* symbol)
 
@@ -22,7 +22,14 @@
     acc))
 
 (defn preserve-meta [form meta]
-  (list 'with-meta form (list 'quote meta)))
+  (if (and (instance? clojure.lang.IMeta form)
+           (not (and (list? form)
+                     (= 'quote (first form))
+                     (symbol (second form)))))
+    (list 'if (list 'instance? 'clojure.lang.IMeta form)
+          (list 'with-meta form (list 'quote meta))
+          form)
+    form))
 
 (defn meta-walk [form]
   (if-let [m (meta form)]
@@ -55,6 +62,7 @@
 (defn match*
   ([x pattern] (match* x pattern {}))
   ([x pattern acc]
+     (debug "match" x pattern acc (class pattern))
      (condp some [pattern]
        *match-var?* (assoc acc pattern x)
        (partial
@@ -69,7 +77,7 @@
          instance?
          Class) (when (instance? pattern x)
                   acc)
-         fn? (when (pattern x)
+         fn? (when (try (pattern x) (catch RuntimeException _))
                (bind-vars x pattern acc))
          set? (loop [[k & ks] (seq pattern)
                      acc acc]
@@ -92,9 +100,11 @@
                            (bind-vars x pattern acc)
                            (if (= '& p)
                              (let [rst (when y (vec (cons y ys)))]
-                               (when-let [acc (if (and (nil? rst) ((first ps) rst)) acc
-                                                  (match* rst (repeat (count rst)
-                                                                      (first ps)) acc))]
+                               (when-let [acc (if (and (nil? rst) (or ((first ps) rst)
+                                                                      (*match-var?* (first ps))))
+                                                acc
+                                                (match* rst (repeat (count rst)
+                                                                    (first ps)) acc))]
                                  (bind-vars rst (first ps) acc)))
                              (when-let [acc (match* y p acc)]
                                (recur ps ys (bind-vars y p acc)))))))
@@ -125,7 +135,7 @@
                (map *var-symbol* (regex-vars lhs)))))
 
 (defmacro condm* [match-var [lhs rhs & ms]]
-  `(if-let [{:syms ~(all-vars lhs)}
+  `(if-let [{:syms ~(remove (set (keys &env)) (all-vars lhs))}
             (mimir.match/match ~match-var ~lhs)]
      ~rhs
      ~(when ms
@@ -133,7 +143,12 @@
 
 (defmacro condm [x & ms]
   (let [match-var (if-let [v (-> x meta :tag)] v '*match*)]
-    `(let [~match-var ~(with-meta x {})]
+    `(let [~match-var ~(if (and (instance? clojure.lang.IMeta x)
+                                (not (and (list? x)
+                                          (= 'quote (first x))
+                                          (symbol? (second x)))))
+                         (with-meta x {})
+                         x)]
        (condm* ~match-var ~ms))))
 
 (defn single-arg? [ms]
@@ -154,4 +169,3 @@
                                     match-var)) ~@ms)))
        (alter-meta! (var ~name) merge {:doc (apply str ~doc)})
        ~name)))
-
