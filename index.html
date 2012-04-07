@@ -3029,11 +3029,131 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>mimir -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">mimir</h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>Mímir is an experimental rule engine written in Clojure</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0-beta5</td></tr><tr><td class="dep-name">log4j/log4j</td><td class="dotted"><hr /></td><td class="dep-version">1.2.16</td></tr><tr><td class="dep-name">org.clojure/tools.logging</td><td class="dotted"><hr /></td><td class="dep-version">0.2.3</td></tr></table></div><div class="dependencies"><h3>dev dependencies</h3><table><tr><td class="dep-name">org.clojure/tools.trace</td><td class="dotted"><hr /></td><td class="dep-version">0.7.2-20120223.025622-2</td></tr><tr><td class="dep-name">marginalia</td><td class="dotted"><hr /></td><td class="dep-version">0.7.0</td></tr><tr><td class="dep-name">lein-difftest</td><td class="dotted"><hr /></td><td class="dep-version">1.3.7</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#mimir.well">mimir.well</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#mimir.well" name="mimir.well"><h1 class="project-name">mimir.well</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0-beta5</td></tr><tr><td class="dep-name">log4j/log4j</td><td class="dotted"><hr /></td><td class="dep-version">1.2.16</td></tr><tr><td class="dep-name">org.clojure/tools.logging</td><td class="dotted"><hr /></td><td class="dep-version">0.2.3</td></tr></table></div><div class="dependencies"><h3>dev dependencies</h3><table><tr><td class="dep-name">marginalia</td><td class="dotted"><hr /></td><td class="dep-version">0.7.0</td></tr><tr><td class="dep-name">lein-difftest</td><td class="dotted"><hr /></td><td class="dep-version">1.3.7</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#mimir.match">mimir.match</a></li><li><a href="#mimir.well">mimir.well</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#mimir.match" name="mimir.match"><h1 class="project-name">mimir.match</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(ns mimir.match
+  (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
+        [clojure.tools.logging :only (debug info warn error spy)]
+        [clojure.walk :only (postwalk prewalk walk postwalk-replace)])
+  (:import [java.util.regex Pattern]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn filter-walk
+  [x pred]
+  (let [acc (transient [])]
+    (postwalk #(when (pred %) (conj! acc %)) x)
+    (distinct (persistent! acc))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:dynamic *match-var?* symbol?)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:dynamic *var-symbol* symbol)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn bind-vars [x pattern acc]
+  (if-let [var (if (*match-var?* pattern)
+                 pattern
+                 (-&gt; pattern meta :tag))]
+    (assoc acc var x)
+    acc))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn meta-walk [form]
+  (if-let [m (meta form)]
+    (list 'with-meta (walk meta-walk identity form)
+          (list 'quote m))
+    (if (*match-var?* form)
+      (list 'quote form)
+      (walk meta-walk identity form))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn bound-vars [x]
+  (let [vars (transient [])
+        var-walk (fn this [form]
+                   (when-let [v (-&gt; form meta :tag)]
+                     (when (*match-var?* v)
+                       (conj! vars v)))
+                   form)]
+    (prewalk var-walk x)
+    (distinct (persistent! vars))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn regex-vars [x]
+  (let [vars (transient [])
+        regex-walk (fn this [form]
+                     (when (instance? Pattern form)
+                       (reduce conj! vars
+                               (map (comp symbol second)
+                                    (re-seq #&quot;\(\?&lt;(.+?)&gt;.*?\)&quot; (str form)))))
+                     form)]
+    (postwalk regex-walk x)
+    (distinct (persistent! vars))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn match*
+  ([x pattern] (match* x pattern {}))
+  ([x pattern acc]
+     (condp some [pattern]
+       *match-var?* (assoc acc pattern x)
+       (partial
+        instance?
+        Pattern) (let [re (re-matcher pattern (str x))
+                       groups (regex-vars pattern)]
+                   (when (.matches re)
+                     (reduce #(assoc % (*var-symbol* %2)
+                                     (.group re (str %2)))
+                             acc groups)))
+        (partial
+         instance?
+         Class) (when (instance? pattern x)
+                  acc)
+         fn? (when (pattern x)
+               (bind-vars x pattern acc))
+         set? (loop [[k &amp; ks] (seq pattern)
+                     acc acc]
+                (when k
+                  (if-let [acc (match* x k acc)]
+                    (bind-vars x pattern acc)
+                    (recur ks acc))))
+         map? (when (map? x)
+                (loop [[k &amp; ks] (keys pattern)
+                       acc acc]
+                  (if-not k
+                    (bind-vars x pattern acc)
+                    (when-let [acc (match* (x k) (pattern k) acc)]
+                      (recur ks (bind-vars (x k) (pattern k) acc))))))
+         sequential? (when (sequential? x)
+                       (loop [[p &amp; ps] pattern
+                              [y &amp; ys] x
+                              acc acc]
+                         (if-not p
+                           (bind-vars x pattern acc)
+                           (if (= '&amp; p)
+                             (when-let [rst (when y (vec (cons y ys)))]
+                               (when-let [acc (match* rst (repeat (count rst)
+                                                                  (first ps)) acc)]
+                                 (bind-vars rst (first ps) acc)))
+                             (when-let [acc (match* y p acc)]
+                               (recur ps ys (bind-vars y p acc)))))))
+         #{x} acc
+         nil)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro match [x m]
+  `(match* ~x ~(postwalk-replace
+                {'_ identity '&amp; (list 'quote '&amp;)}
+                (list 'with-meta (walk identity meta-walk m) (list 'quote (meta m))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro condm* [[lhs rhs &amp; ms]]
+  `(if-let [{:syms ~(vec (concat (filter-walk lhs *match-var?*)
+                                 (bound-vars lhs)
+                                 (map *var-symbol* (regex-vars lhs))))}
+            (mimir.well/match ~'*match* ~lhs)]
+     ~rhs
+     ~(when ms
+        `(condm* ~ms))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro condm [x &amp; ms]
+  `(let [~'*match* ~x]
+     (condm* ~ms)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn single-arg? [ms]
+  (not-any? coll? (take-nth 2 ms)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro fm [&amp; ms]
+  `(fn ~'this [&amp; ~'args]
+     (condm (if ~(single-arg? ms) (first ~'args) ~'args) ~@ms)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro defm [name &amp; ms]
+  (let [[doc ms] (split-with string? ms)]
+    `(do
+       (defn ~name [&amp; ~'args]
+         (condm (if ~(single-arg? ms) (first ~'args) ~'args) ~@ms))
+       (when '~doc
+         (alter-meta! (var ~name) merge {:doc (apply str '~doc)}))
+       ~name)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#mimir.well" name="mimir.well"><h1 class="project-name">mimir.well</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns mimir.well
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
-        [clojure.walk :only (postwalk postwalk-replace macroexpand-all)])
+        [clojure.walk :only (postwalk postwalk-replace)]
+        [mimir.match :only (filter-walk match)])
   (:refer-clojure :exclude [assert])
   (:gen-class))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn create-net []
@@ -3064,23 +3184,20 @@ net.brehaut.ClojureTools = (function (SH) {
        (cond ((some-fn
                sequential? map? set? string?) x) (cons (atom-fn x)
                                                        (parser xs atom-fn triplet-fn))
-               (is-matcher? x xs) (cons (atom-fn (list 'mimir.well/match x (first xs)))
+               (is-matcher? x xs) (cons (atom-fn (list 'mimir.match/match* x (first xs)))
                                         (parser (rest xs) atom-fn triplet-fn))
                :else (cons (triplet-fn (cons x (take 2 xs)))
                            (parser (drop 2 xs) atom-fn triplet-fn))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
                       (not (is-var? %))) (list 'quote %) %) rhs))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn vars [x]
-  (let [vars (transient [])]
-    (postwalk #(when (is-var? %) (conj! vars %)) x)
-    (distinct (persistent! vars))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn vars [x] (filter-walk x is-var?))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn quote-fact [t]
   (list 'quote t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn expand-rhs [t]
   (cons 'mimir.well/assert t))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def relations (reduce (fn [m rel] (assoc m rel rel))
-                       '{&lt;- mimir.well/match = mimir.well/match != not=} '[&lt; &gt; &lt;= =&gt; not=]))</pre></td></tr><tr><td class="docs">
+                       '{&lt;- mimir.match/match* = mimir.match/match* != not=} '[&lt; &gt; &lt;= =&gt; not=]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn expand-lhs [t]
   (if-let [rel (relations (second t))]
     (let [[var _ &amp; [rest]] t]
@@ -3098,7 +3215,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (loop [[c &amp; cs] (map macroexpand lhs)
          acc []]
     (if-not c
-        acc
+      acc
       (recur cs
              (if (every? seq? c)
                (into acc c)
@@ -3123,8 +3240,8 @@ net.brehaut.ClojureTools = (function (SH) {
                          ~@rhs)))))]
        (debug &quot;defining rule&quot; '~name)
        (when-not (= '~lhs '~expanded-lhs)
-          (debug &quot;expanded&quot; '~lhs)
-          (debug &quot;    into&quot; '~expanded-lhs))
+         (debug &quot;expanded&quot; '~lhs)
+         (debug &quot;    into&quot; '~expanded-lhs))
        (alter-meta! f# merge {:lhs '~lhs :rhs '~rhs :doc ~(apply str doc)})
        (swap! *net* update-in [:productions] conj f#)
        f#)))</pre></td></tr><tr><td class="docs">
@@ -3239,50 +3356,6 @@ net.brehaut.ClojureTools = (function (SH) {
   (if (and (seq? am) (= 1 (count am)))
     (fn? (-&gt; am first first val))
     false))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn all-different [&amp; xs]
-  (apply distinct? xs))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn different [f &amp; xs]
-  (apply distinct? (map f xs)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn same*
-  ([test pred xs]
-     (test (for [x xs y (remove #{x} xs)]
-             (pred x y)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn not-same [pred &amp; xs]
-  (same* (partial not-any? true?) pred xs))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn same [pred &amp; xs]
-  (same* (partial every? true?) pred xs))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro unique [xs]
-  (for [[x y] (partition 2 1 xs)]
-    `(pos? (compare ~x ~y))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn match* [x pattern]
-  (condp some [pattern]
-    (some-fn
-     fn?
-     set?) (pattern x)
-     map?  (loop [[[k v] &amp; ks] (seq pattern)]
-                  (if-not k
-                    true
-                    (if (match* (x k) v)
-                      (recur ks)
-                      false)))
-     sequential? (loop [[p &amp; ps] pattern
-                        [x &amp; xs] x]
-                   (if-not p
-                     (nil? x)
-                     (if (= '&amp; p)
-                       (let [rst (vec (cons x xs))]
-                         (match* rst (repeat (count rst)
-                                             (first ps))))
-                       (if (match* x p)
-                         (recur ps xs)
-                         false))))
-     (= x pattern)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro match [x m]
-  `(match* ~x ~(postwalk-replace {'_ 'identity '&amp; (list 'quote '&amp;)} m)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn not-in [set]
-  (complement set))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn is-not [x]
-  (partial not= x))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn permutations
   ([coll] (permutations (count coll) coll))
   ([n coll]
@@ -3340,18 +3413,6 @@ net.brehaut.ClojureTools = (function (SH) {
          matches
          (let [c2 (first cs)]
            (recur cs (beta-join-node c1 c2 matches wm)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro assert
-  ([fact]
-     `(let [fact# (list ~@(quote-non-vars fact))]
-        (fact fact#)))
-  ([id rel attr]
-     `(assert ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro retract
-  ([fact]
-     `(let [fact# (list ~@(quote-non-vars fact))]
-        (retract* fact#)))
-  ([id rel attr]
-     `(retract ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn run-once [wm productions]
   (-&gt;&gt; productions
        (mapcat #(% wm {}))
@@ -3370,6 +3431,37 @@ net.brehaut.ClojureTools = (function (SH) {
              acc))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn reset []
   (reset! *net* (create-net)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro assert
+  ([fact]
+     `(let [fact# (list ~@(quote-non-vars fact))]
+        (fact fact#)))
+  ([id rel attr]
+     `(assert ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro retract
+  ([fact]
+     `(let [fact# (list ~@(quote-non-vars fact))]
+        (retract* fact#)))
+  ([id rel attr]
+     `(retract ~(list id rel attr))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn all-different [&amp; xs]
+  (apply distinct? xs))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn different [f &amp; xs]
+  (apply distinct? (map f xs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn same*
+  ([test pred xs]
+     (test (for [x xs y (remove #{x} xs)]
+             (pred x y)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn not-same [pred &amp; xs]
+  (same* (partial not-any? true?) pred xs))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn same [pred &amp; xs]
+  (same* (partial every? true?) pred xs))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro unique [xs]
+  (for [[x y] (partition 2 1 xs)]
+    `(pos? (compare ~x ~y))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn not-in [set]
+  (complement set))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn is-not [x]
+  (partial not= x))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn version []
   (-&gt; &quot;project.clj&quot; clojure.java.io/resource
       slurp read-string (nth 2)))</pre></td></tr><tr><td class="docs">
