@@ -14,6 +14,9 @@
   (and (= 1 (count x))
        (coll? (first x))))
 
+(defn maybe-singleton-coll [x]
+  (if (singleton-coll? x) (first x) x))
+
 (def ^:dynamic *match-var?* #(and (symbol? %) (not (resolve %))))
 
 (def ^:dynamic *var-symbol* symbol)
