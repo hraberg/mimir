@@ -52,6 +52,27 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 ```
 
 ```clojure
+  ; N Queens
+  (chessboard *n*)
+
+  (rule n-queens
+
+        ?queens <- (take-unique *n*)
+
+        (different #{file rank} ?queens)
+
+        (not-same diagonal? ?queens)
+
+        =>
+
+        (map file ?queens))
+
+  ; n = 5
+  (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
+          [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])
+```
+
+```clojure
   ; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
   (doseq [name ["Fred" "Joe" "Bob" "Tom"]
           pants-color [:red :blue :plaid :orange]
@@ -90,7 +111,8 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
             {:name "Tom", :position 3, :pants-color :red}})
 ```
 
-For more, see the [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
+
+For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
 
 
 ## References
