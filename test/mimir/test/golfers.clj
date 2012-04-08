@@ -30,9 +30,7 @@
 
         ?golfers <- #{?g1 ?g2 ?g3 ?g4}
 
-        (different :position ?golfers)
-
-        (different :pants-color ?golfers)
+        (different #{:position :pants-color} ?golfers)
 
         (contains? ?golfers ?g)
 

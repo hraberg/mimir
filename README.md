@@ -74,17 +74,15 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
              :position (not-in #{1 4})
              :pants-color (is-not :orange)}
 
-        (different :position
-                   ?g1 ?g2 ?g3 ?g4)
+        ?golfers <- #{?g1 ?g2 ?g3 ?g4}
 
-        (different :pants-color
-                   ?g1 ?g2 ?g3 ?g4)
+        (different #{:position :pants-color} ?golfers)
 
-        (#{?g1 ?g2 ?g3 ?g4} ?g)
+        (contains? ?golfers ?g)
 
         =>
 
-        #{?g1 ?g2 ?g3 ?g4})
+        (set ?golfers))
 
   (match? #{{:name "Fred", :position 1, :pants-color :orange}
             {:name "Joe", :position 2, :pants-color :blue}

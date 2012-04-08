@@ -364,19 +364,28 @@
 (defn all-different [& xs]
   (apply distinct? xs))
 
-(defn different [f & xs]
-  (apply distinct? (map f (if (singleton-coll? xs) (first xs) xs))))
+(defn maybe-singleton-coll [x]
+  (if (singleton-coll? x) (first x) x))
+
+(defmacro different [f xs]
+  (if (coll? f)
+    (map #(list 'different % xs) f)
+    `(apply distinct? (map ~f (maybe-singleton-coll ~xs)))))
 
 (defn same*
   ([test pred xs]
      (test (for [x xs y (remove #{x} xs)]
              (pred x y)))))
 
-(defn not-same [pred & xs]
-  (same* (partial not-any? true?) pred (if (singleton-coll? xs) (first xs) xs)))
+(defmacro not-same [pred xs]
+  (if (coll? pred)
+    (map #(list 'not-same % xs) pred)
+    `(same* (partial not-any? true?) ~pred (maybe-singleton-coll ~xs))))
 
 (defn same [pred & xs]
-  (same* (partial every? true?) pred (if (singleton-coll? xs) (first xs) xs)))
+  (if (coll? pred)
+    (map #(list 'same % xs) pred)
+    `(same* (partial every? true?) ~pred (maybe-singleton-coll ~xs))))
 
 (defmacro gen-vars
   ([n prefix]

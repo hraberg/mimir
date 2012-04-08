@@ -23,11 +23,10 @@
   (chessboard *n*)
 
   (rule n-queens
+
         ?queens <- (take-unique *n*)
 
-        (different file ?queens)
-
-        (different rank ?queens)
+        (different #{file rank} ?queens)
 
         (not-same diagonal? ?queens)
 
