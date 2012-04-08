@@ -311,7 +311,7 @@
   (mapcat #(sort-by (comp count vars) %) (partition-by binding? cs)))
 
 (defn binding-vars-for-rule [cs]
-  (into #{} (map (comp first vars) (filter binding? cs))))
+  (into #{} (map binding-var (filter binding? cs))))
 
 (defn check-rule
   ([cs wm] (check-rule cs wm {}))
