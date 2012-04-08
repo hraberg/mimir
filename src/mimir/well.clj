@@ -177,6 +177,9 @@
 (defn binding? [[fst & _]]
   (= 'mimir.well/bind fst))
 
+(defn binding-var [[_ snd & _ :as c]]
+  (when (binding? c) snd))
+
 (defn multi-var-predicate? [c]
   (and (predicate? c) (> (count (vars c)) 1)))
 
@@ -260,12 +263,10 @@
     (eval `(fn [pred# {:syms [~@(filter join-on args)]} [~@(remove join-on args)]]
              (pred# ~@args)))))
 
-(defn deal-with-multi-var-predicates [c1-am c2-am c2 join-on]
+(defn deal-with-multi-var-predicates [c1-am c2-am join-on bind-var]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
-        binding? (binding? c2)
-        bind-var (when binding? (-> c2 vars first))
-        join-on (if binding? (conj join-on bind-var) join-on)
+        join-on (if bind-var (conj join-on bind-var) join-on)
         needed-args (remove join-on args)
         permutated-wm (permutations (count needed-args) (working-memory))
         invoker (predicate-invoker args join-on)]
@@ -275,7 +276,7 @@
     (debug " permutations of wm" (ellipsis permutated-wm))
     (for [m c1-am
           wmes permutated-wm
-          :let [new-bindings (when binding?
+          :let [new-bindings (when bind-var
                                (try
                                  (when-let [bind-val (invoker pred m wmes)]
                                    {bind-var bind-val})
@@ -295,7 +296,9 @@
         (debug "  left" (ellipsis c1-am))
         (debug " right" (ellipsis c2-am))
         (let [result (cond
-                      (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am c2 join-on)
+                      (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates
+                                                          c1-am c2-am
+                                                          join-on (binding-var c2))
                       (empty? join-on) (cross c1-am c2-am)
                       :else (join c1-am c2-am))]
           (debug "result" (ellipsis result))
