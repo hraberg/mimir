@@ -23,11 +23,9 @@
   (and (sequential? x) (= 3 (count x)) (symbol? (second x))))
 
 (defn is-var? [x]
-  (if (symbol? x)
-    (let [s (name x)]
-      (or (.startsWith s "?")
-          (re-matches #"[A-Z]+" s)))
-    false))
+  (when-let [s (and (symbol? x) (name x))]
+    (or (.startsWith s "?")
+        (re-matches #"[A-Z]+" s))))
 
 (defn is-matcher? [x xs]
   (and (is-var? x) (not (symbol? (first xs)))))
