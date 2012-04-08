@@ -28,17 +28,17 @@
              :position (not-in #{1 4})
              :pants-color (is-not :orange)}
 
-        (different :position
-                   ?g1 ?g2 ?g3 ?g4)
+        ?golfers <- #{?g1 ?g2 ?g3 ?g4}
 
-        (different :pants-color
-                   ?g1 ?g2 ?g3 ?g4)
+        (different :position ?golfers)
 
-        (#{?g1 ?g2 ?g3 ?g4} ?g)
+        (different :pants-color ?golfers)
+
+        (contains? ?golfers ?g)
 
         =>
 
-        #{?g1 ?g2 ?g3 ?g4})
+        (set ?golfers))
 
   (time (match? #{{:name "Fred", :position 1, :pants-color :orange}
                   {:name "Joe", :position 2, :pants-color :blue}

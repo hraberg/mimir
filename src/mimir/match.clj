@@ -1,6 +1,6 @@
 (ns mimir.match
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
-        [clojure.tools.logging :only (debug info warn error spy)]
+        [clojure.tools.logging :only (debug info warn error spy enabled?)]
         [clojure.walk :only (postwalk prewalk walk postwalk-replace)])
   (:import [java.util.regex Pattern]))
 
@@ -9,6 +9,10 @@
   (let [acc (transient [])]
     (postwalk #(when (pred %) (conj! acc %)) coll)
     (distinct (persistent! acc))))
+
+(defn singleton-coll? [x]
+  (and (= 1 (count x))
+       (coll? (first x))))
 
 (def ^:dynamic *match-var?* #(and (symbol? %) (not (resolve %))))
 
@@ -62,7 +66,6 @@
 (defn match*
   ([x pattern] (match* x pattern {}))
   ([x pattern acc]
-     (debug "match" x pattern acc (class pattern))
      (condp some [pattern]
        *match-var?* (assoc acc pattern x)
        (partial
@@ -100,8 +103,7 @@
                            (bind-vars x pattern acc)
                            (if (= '& p)
                              (let [rst (when y (vec (cons y ys)))]
-                               (when-let [acc (if (and (nil? rst) (or ((first ps) rst)
-                                                                      (*match-var?* (first ps))))
+                               (when-let [acc (if (*match-var?* (first ps))
                                                 acc
                                                 (match* rst (repeat (count rst)
                                                                     (first ps)) acc))]

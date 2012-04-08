@@ -2,7 +2,7 @@
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)]
-        [mimir.match :only (filter-walk)])
+        [mimir.match :only (filter-walk singleton-coll?)])
   (:refer-clojure :exclude [assert])
   (:gen-class))
 
@@ -57,7 +57,7 @@
   (cons 'mimir.well/assert t))
 
 (def relations (reduce (fn [m rel] (assoc m rel rel))
-                       '{<- mimir.match/match* = mimir.match/match* != not=} '[< > <= => not=]))
+                       '{<- mimir.well/bind = mimir.match/match* != not=} '[< > <= => not=]))
 
 (defn expand-lhs [t]
   (if-let [rel (relations (second t))]
@@ -141,7 +141,7 @@
     (let [args (ordered-vars c)
           src `(fn ~args ~c)]
       (debug " compiling" c)
-      (with-meta (eval src) {:src src :args args}))))
+      (with-meta (eval src) {:src c :args args}))))
 
 (defn match-using-predicate [c wme]
   (let [predicate (predicate-for c)]
@@ -170,6 +170,11 @@
          symbol? resolve)
         (every-pred
          (complement symbol?) ifn?)))))
+
+(defn bind [to expr] expr)
+
+(defn binding? [[fst & _]]
+  (= 'mimir.well/bind fst))
 
 (defn multi-var-predicate? [c]
   (and (predicate? c) (> (count (vars c)) 1)))
@@ -208,26 +213,27 @@
         (fact wm#)))))
 
 (defn matching-wmes
-  ([c] (matching-wmes c (working-memory)))
-  ([c wm]
+  ([c] (matching-wmes c (working-memory) false))
+  ([c wm needs-beta?]
      (debug "condition" c)
-     (if (multi-var-predicate? c)
+     (if (or ((some-fn multi-var-predicate? binding?) c)
+             needs-beta?)
        #{(multi-var-predicate-placeholder c)}
        (->> wm
             (map #(match-wme c %))
             (remove nil?)
             (set)))))
 
-(defn alpha-network-lookup [c wm]
+(defn alpha-network-lookup [c wm needs-beta?]
   (with-cache alpha-network c
-    (matching-wmes c wm)))
+    (matching-wmes c wm needs-beta?)))
 
 (defn alpha-memory
-  ([c] (alpha-memory c (working-memory)))
-  ([c wm]
+  ([c] (alpha-memory c (working-memory) false))
+  ([c wm needs-beta?]
      (let [var-to-index (var-to-index c)
            vars-by-index (map-invert var-to-index)]
-       (->> (alpha-network-lookup (postwalk-replace var-to-index c) wm)
+       (->> (alpha-network-lookup (postwalk-replace var-to-index c) wm needs-beta?)
             (map #(rename-keys (with-meta % (postwalk-replace vars-by-index (meta %))) vars-by-index))))))
 
 (defn cross [left right]
@@ -237,9 +243,8 @@
           (merge x y))))
 
 (defn multi-var-predicate-node? [am]
-  (if (and (seq? am) (= 1 (count am)))
-    (fn? (-> am first first val))
-    false))
+  (and (seq? am) (= 1 (count am))
+       (fn? (-> am first first val))))
 
 (defn permutations
   ([coll] (permutations (count coll) coll))
@@ -254,9 +259,12 @@
     (eval `(fn [pred# {:syms [~@(filter join-on args)]} [~@(remove join-on args)]]
              (pred# ~@args)))))
 
-(defn deal-with-multi-var-predicates [c1-am c2-am join-on]
+(defn deal-with-multi-var-predicates [c1-am c2-am c2 join-on]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
+        binding? (binding? c2)
+        bind-var (when binding? (-> c2 vars first))
+        join-on (if binding? (conj join-on bind-var) join-on)
         needed-args (remove join-on args)
         permutated-wm (permutations (count needed-args) (working-memory))
         invoker (predicate-invoker args join-on)]
@@ -266,42 +274,51 @@
     (debug " permutations of wm" (ellipsis permutated-wm))
     (for [m c1-am
           wmes permutated-wm
+          :let [new-bindings (when binding?
+                               (try
+                                 {bind-var (invoker pred m wmes)}
+                                 (catch RuntimeException e
+                                   (debug " binding threw non fatal" e))))]
           :when (try
-                  (invoker pred m wmes)
+                  (or new-bindings (invoker pred m wmes))
                   (catch RuntimeException e
                     (debug " threw non fatal" e)))]
-      (merge m (zipmap needed-args wmes)))))
+      (merge m (zipmap needed-args wmes) new-bindings))))
 
-(defn beta-join-node [c1 c2 c1-am wm]
-  (let [c2-am (alpha-memory c2 wm)]
+(defn beta-join-node [c1 c2 c1-am binding-vars wm]
+  (let [c2-am (alpha-memory c2 wm (some binding-vars (vars c2)))]
     (with-cache beta-join-nodes [c1-am c2-am]
       (let [join-on (join-on (-> c1-am first keys) c2)]
         (debug "join" join-on)
         (debug "  left" (ellipsis c1-am))
         (debug " right" (ellipsis c2-am))
         (let [result (cond
-                      (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am join-on)
+                      (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates c1-am c2-am c2 join-on)
                       (empty? join-on) (cross c1-am c2-am)
                       :else (join c1-am c2-am))]
           (debug "result" (ellipsis result))
           result)))))
 
-(defn dummy-beta-join-node [c wm args]
-  (beta-join-node '() c #{args} wm))
+(defn dummy-beta-join-node [c wm args binding-vars]
+  (beta-join-node '() c #{args} binding-vars wm))
 
 (defn order-conditions [cs]
-  (sort-by (comp count vars) cs))
+  (mapcat #(sort-by (comp count vars) %) (partition-by binding? cs)))
+
+(defn binding-vars-for-rule [cs]
+  (into #{} (map (comp first vars) (filter binding? cs))))
 
 (defn check-rule
   ([cs wm] (check-rule cs wm {}))
   ([cs wm args]
      (debug "conditions" cs)
-     (loop [[c1 & cs] (order-conditions cs)
-            matches (dummy-beta-join-node c1 wm args)]
-       (if-not cs
-         matches
-         (let [c2 (first cs)]
-           (recur cs (beta-join-node c1 c2 matches wm)))))))
+     (let [binding-vars (binding-vars-for-rule cs)]
+       (loop [[c1 & cs] (order-conditions cs)
+              matches (dummy-beta-join-node c1 wm args binding-vars)]
+         (if-not cs
+           matches
+           (let [c2 (first cs)]
+             (recur cs (beta-join-node c1 c2 matches binding-vars wm))))))))
 
 (defn run-once
   ([] (run-once (working-memory) (productions)))
@@ -344,7 +361,7 @@
   (apply distinct? xs))
 
 (defn different [f & xs]
-  (apply distinct? (map f xs)))
+  (apply distinct? (map f (if (singleton-coll? xs) (first xs) xs))))
 
 (defn same*
   ([test pred xs]
