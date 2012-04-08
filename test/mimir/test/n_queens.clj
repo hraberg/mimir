@@ -1,5 +1,5 @@
 (ns mimir.test.n-queens
-  (:use [mimir.well :only (rule fact unique not-same different)]
+  (:use [mimir.well :only (rule fact take-unique not-same different gen-vars)]
         [mimir.test.common]
         [clojure.test]))
 
@@ -17,11 +17,13 @@
   (= (Math/abs (- (rank x) (rank y)))
      (Math/abs (- (file x) (file y)))))
 
-(deftest n-queens
-  (chessboard 5)
+(def ^:dynamic *n* 5)
 
-  (rule five-queens
-        ?queens <- (unique [?q1 ?q2 ?q3 ?q4 ?q5])
+(deftest n-queens-test
+  (chessboard *n*)
+
+  (rule n-queens
+        ?queens <- (take-unique *n*)
 
         (different file ?queens)
 

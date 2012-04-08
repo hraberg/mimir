@@ -378,11 +378,19 @@
 (defn same [pred & xs]
   (same* (partial every? true?) pred (if (singleton-coll? xs) (first xs) xs)))
 
+(defmacro gen-vars
+  ([n prefix]
+     `(vec (map #(var-sym (str '~prefix "-" %))
+                (range 1 (inc ~n))))))
+
 (defmacro unique [xs]
   (concat
    (for [[x y] (partition 2 1 xs)]
      `(pos? (compare ~x ~y)))
    (list (list 'identity xs))))
+
+(defmacro take-unique [n]
+  `(unique ~(gen-vars (eval n) (gensym))))
 
 (defn not-in [set]
   (complement set))
