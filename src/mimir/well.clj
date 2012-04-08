@@ -59,10 +59,23 @@
 (def relations (reduce (fn [m rel] (assoc m rel rel))
                        '{<- mimir.well/bind = mimir.match/match* != not=} '[< > <= => not=]))
 
+(defn macroexpand-conditions [lhs]
+  (loop [[c & cs] (map macroexpand lhs)
+         acc []]
+    (if-not c
+      acc
+      (recur cs
+             (if (every? seq? c)
+               (into acc c)
+               (conj acc c))))))
+
 (defn expand-lhs [t]
   (if-let [rel (relations (second t))]
     (let [[var _ & [rest]] t]
-      (list rel var rest))
+      (if-let [rest (and (seq? rest)
+                         (macroexpand-conditions [rest]))]
+          (concat (butlast rest) [(list rel var (last rest))])
+        (list rel var rest)))
     t))
 
 (defn ellipsis
@@ -73,16 +86,6 @@
             (when more
               (str "... [total: " (count x)
                    "]"))))))
-
-(defn macroexpand-conditions [lhs]
-  (loop [[c & cs] (map macroexpand lhs)
-         acc []]
-    (if-not c
-      acc
-      (recur cs
-             (if (every? seq? c)
-               (into acc c)
-               (conj acc c))))))
 
 (defmacro rule [name & body]
   (let [[lhs _ rhs] (partition-by '#{=>} body)
@@ -276,7 +279,8 @@
           wmes permutated-wm
           :let [new-bindings (when binding?
                                (try
-                                 {bind-var (invoker pred m wmes)}
+                                 (when-let [bind-val (invoker pred m wmes)]
+                                   {bind-var bind-val})
                                  (catch RuntimeException e
                                    (debug " binding threw non fatal" e))))]
           :when (try
@@ -369,14 +373,16 @@
              (pred x y)))))
 
 (defn not-same [pred & xs]
-  (same* (partial not-any? true?) pred xs))
+  (same* (partial not-any? true?) pred (if (singleton-coll? xs) (first xs) xs)))
 
 (defn same [pred & xs]
-  (same* (partial every? true?) pred xs))
+  (same* (partial every? true?) pred (if (singleton-coll? xs) (first xs) xs)))
 
 (defmacro unique [xs]
-  (for [[x y] (partition 2 1 xs)]
-    `(pos? (compare ~x ~y))))
+  (concat
+   (for [[x y] (partition 2 1 xs)]
+     `(pos? (compare ~x ~y)))
+   (list (list 'identity xs))))
 
 (defn not-in [set]
   (complement set))

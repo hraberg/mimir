@@ -21,20 +21,17 @@
   (chessboard 5)
 
   (rule five-queens
-        (unique [?q1 ?q2 ?q3 ?q4 ?q5])
+        ?queens <- (unique [?q1 ?q2 ?q3 ?q4 ?q5])
 
-        (different file
-                   ?q1 ?q2 ?q3 ?q4 ?q5)
+        (different file ?queens)
 
-        (different rank
-                   ?q1 ?q2 ?q3 ?q4 ?q5)
+        (different rank ?queens)
 
-        (not-same diagonal?
-                  ?q1 ?q2 ?q3 ?q4 ?q5)
+        (not-same diagonal? ?queens)
 
         =>
 
-        (map file [?q1 ?q2 ?q3 ?q4 ?q5]))
+        (map file ?queens))
 
   (time (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
                 [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])))
