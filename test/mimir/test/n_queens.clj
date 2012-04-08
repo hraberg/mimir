@@ -25,9 +25,7 @@
   (rule n-queens
 
         ?queens <- (take-unique *n*)
-
         (different #{file rank} ?queens)
-
         (not-same diagonal? ?queens)
 
         =>

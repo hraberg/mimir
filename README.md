@@ -58,9 +58,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (rule n-queens
 
         ?queens <- (take-unique *n*)
-
         (different #{file rank} ?queens)
-
         (not-same diagonal? ?queens)
 
         =>
