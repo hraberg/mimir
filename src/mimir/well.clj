@@ -142,7 +142,6 @@
   (fn [form]
     (condp some [form]
       seq? (with-cache expression-cache form
-;             (println "cache miss" form)
              (eval form))
       locals (locals form)
       form)))
@@ -156,7 +155,7 @@
 (defn predicate-for [c]
   (with-cache predicate c
     (let [args (ordered-vars c)
-          src `(fn ~args (tree-eval '~c))]
+          src `(fn ~args ~c)]
       (debug " compiling" c)
       (with-meta (eval src) {:src c :args args}))))
 

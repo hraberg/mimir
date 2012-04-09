@@ -6,6 +6,5 @@
   :dev-dependencies [[marginalia "0.7.0"]
                      [lein-difftest "1.3.7"]]
   :repl-init mimir.well
-  :warn-on-reflection true
   :main mimir.well
   :aot [mimir.well])
