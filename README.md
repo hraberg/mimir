@@ -33,6 +33,8 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? B1 is on-top)
 ```
 
+This example uses basic triplets, where each value in a fact is a Clojure atom, and in a rule an atom or a var, prefixed with `?`. This mode is the raw mode the Rete network is operating in, but is somwhat limited in it's applicability. In theory, other representations would be possible to compile into this format, but no work has been done on making it so, as I'm doubtful about the practical usecase for the triplets.
+
 ```clojure
   ; Dudeney's SEND + MORE = MONEY:
   (integers)
@@ -50,6 +52,8 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
 
    (match? "9567+1085=10652")
 ```
+
+This example uses real Clojure code as it's conditions. The left hand side, before the `=>`, contains of one or more conditions, which all must be satisfied for the rule to fire the right hand side, the code after `=>`. `base` is a macro that expands into many more conditions, and introduces variables for the reminders of the addition to limit the amount of unknown variables that has to be found at any given moment. `all-different` is just `distinct?`, but could also be written as a macro expanded into to several sub conditions.
 
 ```clojure
   ; N Queens
@@ -69,6 +73,8 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
           [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])
 ```
+
+This example demonstrates bindings, which introduces a new variable `?queens` which isn't part of the working memory itself, but instead is a group of `*n*` queens that are selected by the `take-unique` macro, which under the hood expands into several conditions to ensure that the set of working memory elements picked are unique regardless of "position", which it does by sorting.  `different` is a macros expanding into a `distinct?` call for each fn (keywords in this case). `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of `?queens`. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored.
 
 ```clojure
   ; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
@@ -108,6 +114,8 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
             {:name "Bob", :position 4, :pants-color :plaid}
             {:name "Tom", :position 3, :pants-color :red}})
 ```
+
+This example is demonstrating the pattern matcher (see below) operating on normal Clojure maps. `not-in` and `is-not` are predicates for the values. Keys not specified in the match are ignored.
 
 For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
 
