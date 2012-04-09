@@ -78,9 +78,9 @@ This example uses real Clojure code as its conditions. The left hand side, befor
           [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])
 ```
 
-This example demonstrates bindings via `<-` to introduce a new variable `?queens` not part of the working memory itself, but instead is a group of `*n*` queens that are selected by the `take-unique` macro. This expands into several conditions to ensure that the set of working memory elements picked are unique regardless of variable "position". This is done using `compare`.
+This example demonstrates bindings via `<-` to introduce a new variable `?queens` not part of the working memory itself, but instead is a group of `*n*` queens that are selected by the `take-unique` macro. This expands into several conditions to ensure that the set of working memory elements picked are unique regardless of variable "position". This is done using `compare` behind the scenes in the expanded conditions.
 
-`different` is a macro expanding into a `distinct?` call for each fn (keywords in this case). `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of `?queens`. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored.
+`different` is a macro expanding into a `distinct?` call for each fn. `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of `?queens`. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored.
 
 Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))` when calling a rule directly. In contrast, all results are realized by `mimir.well/run` each iteration to figure out if another run is needed.
 
