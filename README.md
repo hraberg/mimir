@@ -113,7 +113,7 @@ For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/m
 
 #### Pattern Matching
 
-Mimir contains an even more experimental [pattern matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj), which can be seen in action on maps in the Rosencrantz golfers example above. This pattern matcher and it's relatioship and influence on Mimir proper is still a bit up in the air - I hope to iron this out over the next week or so. It can be used on it's own:
+Mimir contains an even more experimental [pattern matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj), which can be seen in action on maps in the [Rosencrantz golfers example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/golfers.clj) above. This pattern matcher and it's relatioship and influence on Mimir proper is still a bit up in the air - I hope to iron this out over the next week or so. It can be used on it's own:
 
 ```clojure
 (defm member? [x & y]
