@@ -11,6 +11,7 @@
    :working-memory #{}
    :predicates {}
    :predicate-invokers {}
+   :expression-cache {}
    :alpha-network {}
    :beta-join-nodes {}})
 
@@ -23,7 +24,7 @@
   (and (sequential? x) (= 3 (count x)) (symbol? (second x))))
 
 (defn is-var? [x]
-  (when-let [s (and (symbol? x) (name x))]
+  (when-let [^String s (and (symbol? x) (name x))]
     (or (.startsWith s "?")
         (re-matches #"[A-Z]+" s))))
 
@@ -137,10 +138,25 @@
 (defn ordered-vars [c]
   (->> (var-to-index c) vals sort vec))
 
+(defn tree-eval-walk [locals]
+  (fn [form]
+    (condp some [form]
+      seq? (with-cache expression-cache form
+;             (println "cache miss" form)
+             (eval form))
+      locals (locals form)
+      form)))
+
+(defmacro tree-eval [tree]
+  (let [locals (keys (select-keys &env (mimir.match/filter-walk symbol? tree)))
+        locals (into {} (map #(vector (list 'quote %) %) locals))]
+    `(let [real-locals# ~locals]
+       (postwalk (tree-eval-walk real-locals#) '~tree))))
+
 (defn predicate-for [c]
   (with-cache predicate c
     (let [args (ordered-vars c)
-          src `(fn ~args ~c)]
+          src `(fn ~args (tree-eval '~c))]
       (debug " compiling" c)
       (with-meta (eval src) {:src c :args args}))))
 
