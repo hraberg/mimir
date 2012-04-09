@@ -138,7 +138,7 @@ Mimir contains an even more experimental [pattern matcher](https://github.com/hr
 
 (defm filter-m [pred & coll]
   [^x pred & xs] (cons x (filter-m pred xs))
-  [_       & xs] (filter-2 pred xs)
+  [_       & xs] (filter-m pred xs)
   empty?         ())
 
 (defm map-m [f & coll]
