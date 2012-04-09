@@ -109,8 +109,39 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
             {:name "Tom", :position 3, :pants-color :red}})
 ```
 
-
 For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
+
+#### Pattern Matching
+
+Mimir contains an even more experimental [pattern matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj), which can be seen in action on maps in the Rosencrantz golfers example above. This pattern matcher and it's relatioship and influence on Mimir proper is still a bit up in the air - I hope to iron this out over the next week or so. It can be used on it's own:
+
+```clojure
+(defm member? [x & y]
+  [x & _ ]  true
+  [_ & xs]  (member? x xs))
+
+(defm filter-m [pred & coll]
+  [^x pred & xs] (cons x (filter-m pred xs))
+  [_       & xs] (filter-2 pred xs)
+  empty?         ())
+
+(defm map-m [f & coll]
+  [x & xs] (cons (f x) (map-m f xs)))
+
+(defm reduce-m [f val & coll]
+  [x & xs] (reduce-m f (f x val) xs)
+  empty?   val)
+
+(defn factorial [x]
+  (condm x
+         0 1
+         x (* x (factorial (dec x)))))
+```
+
+It currently performs the match on the var arg by an arbritrary convention, and can use meta data tags to introduce new bindings in a match (this isn't working within a Mimir rule).
+A symbol which isn't already bound will also introduce a binding, like in `member?` above, `x` matches the actual `x` argument to the fn, but `xs` creates a new var bound to the rest.
+
+No performance tuning has been made - partly because there are no tests for this beast yet.
 
 
 ## References

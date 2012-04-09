@@ -1,6 +1,7 @@
 (ns mimir.test.match
   (:use [mimir.match :only (defm condm match)]
         [mimir.test.common]
+        [clojure.walk :only (postwalk prewalk walk postwalk-replace)]
         [clojure.test]))
 
 ; scratchpad, real tests yet to be written
@@ -9,16 +10,16 @@
   [x & _ ]  true
   [_ & xs]  (member? x xs))
 
-(defm filter-2 [pred & coll]
-  [^x pred & xs] (cons x (filter-2 pred xs))
-  [_       & xs] (filter-2 pred xs)
+(defm filter-m [pred & coll]
+  [^x pred & xs] (cons x (filter-m pred xs))
+  [_       & xs] (filter-m pred xs)
   empty?         ())
 
-(defm map-2 [f & coll]
-  [x & xs] (cons (f x) (map-2 f xs)))
+(defm map-m [f & coll]
+  [x & xs] (cons (f x) (map-m f xs)))
 
-(defm reduce-2 [f val & coll]
-  [x & xs] (reduce-2 f (f x val) xs)
+(defm reduce-m [f val & coll]
+  [x & xs] (reduce-m f (f x val) xs)
   empty?   val)
 
 (defn factorial [x]
