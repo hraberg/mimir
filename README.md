@@ -33,9 +33,9 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? B1 is on-top)
 ```
 
-This example uses basic triplets, where each value in a fact is a Clojure atom, and in a rule a condition is an atom or a var, prefixed with `?`. This mode is the raw mode the Rete network is operating in, but is somewhat limited in it's applicability. In theory, other representations would be possible to compile into this format, but no work has been done on making it so, as I'm doubtful about the practical use case for the triplets.
+This example uses basic triplets, where each value in a fact is a Clojure atom, and in a rule a condition an atom or a var, prefixed with `?`. This mode is the raw mode the Rete network is operating in, but is somewhat limited in it's applicability. In theory, other representations are possible to compile into this format, but no work has been done on making it so, as I'm doubtful about the practical use case for the triplets.
 
-The test macro `match?` uses `mimir.well/run` under the hood, which keeps running (potentially forever) until the working memory is stable. The values returned by run are the returned values of the right hand side bodies, which may not have been added to the working memory. When using triplets, a bare triplet returned on the right hand side is automatically `assert`ed into the working memory, but this isn't normally the case for normal Clojure data structures.
+The test macro `match?` uses `mimir.well/run` under the hood, which keeps running (potentially forever) until the working memory is stable. The values returned by run are the returned values of the right hand side bodies, which may not have been added to the working memory. When using triplets, a bare triplet returned on the right hand side is automatically `assert`ed into the working memory, but this isn't the case when returning normal Clojure data structures.
 
 ```clojure
   ; Dudeney's SEND + MORE = MONEY:
@@ -55,7 +55,7 @@ The test macro `match?` uses `mimir.well/run` under the hood, which keeps runnin
    (match? "9567+1085=10652")
 ```
 
-This example uses real Clojure code as it's conditions. The left hand side, before the `=>`, contains of one or more conditions, which all must be satisfied for the rule to fire the right hand side, the code after `=>`. The right hand side is normal Clojure code, which will be invoked once for each matching set of variables found by the left hand side.
+This example uses real Clojure code as its conditions. The left hand side, before the `=>`, contains of one or more conditions, which all must be satisfied for the rule to fire the right hand side, the code after `=>`. The right hand side is normal Clojure code, which will be invoked once for each matching set of variables found by the left hand side (in this case, only once).
 
 `base` is a macro that expands into many more conditions, and introduces variables for the reminders of the addition to limit the amount of unknown variables that has to be found at any given moment. `all-different` is just `distinct?`, but could also be written as a macro expanded into to several sub conditions.
 
@@ -78,7 +78,11 @@ This example uses real Clojure code as it's conditions. The left hand side, befo
           [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])
 ```
 
-This example demonstrates bindings, which introduces a new variable `?queens` which isn't part of the working memory itself, but instead is a group of `*n*` queens that are selected by the `take-unique` macro, which under the hood expands into several conditions to ensure that the set of working memory elements picked are unique regardless of "position", which it does by sorting. `different` is a macro expanding into a `distinct?` call for each fn (keywords in this case). `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of `?queens`. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored. Evaluation of rules are lazy, so you can do: `(take 1 (n-queens))` if calling rules directly.
+This example demonstrates bindings, which introduces a new variable `?queens` which isn't part of the working memory itself, but instead is a group of `*n*` queens that are selected by the `take-unique` macro, which under the hood expands into several conditions to ensure that the set of working memory elements picked are unique regardless of "position", which it does by sorting.
+
+`different` is a macro expanding into a `distinct?` call for each fn (keywords in this case). `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of `?queens`. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored.
+
+Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))` when calling a rule directly. In contrast, all results are realized by `mimir.well/run` each iteration to figure out if another run is needed.
 
 ```clojure
   ; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
