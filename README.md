@@ -33,7 +33,7 @@ Mímir aims to implement a Rete network as a base. I don't vouch for its correct
   (match? B1 is on-top)
 ```
 
-This example uses basic triplets, where each value in a fact is a Clojure atom, and in a rule an atom or a var, prefixed with `?`. This mode is the raw mode the Rete network is operating in, but is somwhat limited in it's applicability. In theory, other representations would be possible to compile into this format, but no work has been done on making it so, as I'm doubtful about the practical usecase for the triplets.
+This example uses basic triplets, where each value in a fact is a Clojure atom, and in a rule a condition is an atom or a var, prefixed with `?`. This mode is the raw mode the Rete network is operating in, but is somwhat limited in it's applicability. In theory, other representations would be possible to compile into this format, but no work has been done on making it so, as I'm doubtful about the practical usecase for the triplets.
 
 ```clojure
   ; Dudeney's SEND + MORE = MONEY:
