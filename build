@@ -3,4 +3,4 @@
 rm -rf classes *.jar
 
 lein deps
-lein uberjar, difftest, run -m marginalia.main --file index.html
+lein do uberjar, difftest, run -m marginalia.main --file index.html

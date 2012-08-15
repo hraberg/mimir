@@ -3,6 +3,7 @@
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)]
         [mimir.match :only (filter-walk maybe-singleton-coll)])
+  (:require [clojure.core.reducers :as r])
   (:refer-clojure :exclude [assert])
   (:gen-class))
 
@@ -16,6 +17,8 @@
    :beta-join-nodes {}})
 
 (def ^:dynamic *net* (atom (create-net)))
+
+(def ^:dynamic *lazy* false)
 
 (doseq [k (keys @*net*)]
   (eval `(defn ~(symbol (name k)) [] (~k @*net*))))
@@ -102,7 +105,7 @@
                                ~'*vars* (map val (sort-by key vars#))]]
                      (do
                        (debug "rhs" vars#)
-                        ~@rhs))))]
+                       ~@rhs))))]
        (debug "defining rule" '~name)
        (when-not (= '~lhs '~expanded-lhs)
          (debug "expanded" '~lhs)
@@ -231,6 +234,9 @@
       (for [wm# ~(vec (parser wms identity quote-fact))]
         (fact wm#)))))
 
+(defn fold-into [ctor coll]
+  (r/fold (r/monoid into ctor) conj coll))
+
 (defn matching-wmes
   ([c] (matching-wmes c (working-memory) false))
   ([c wm needs-beta?]
@@ -241,7 +247,7 @@
        (->> wm
             (map #(match-wme c %))
             (remove nil?)
-            (set)))))
+            set))))
 
 (defn alpha-network-lookup [c wm needs-beta?]
   (with-cache alpha-network c
@@ -269,7 +275,7 @@
   ([coll] (permutations (count coll) coll))
   ([n coll]
      (if (zero? n)
-       '(())
+       [[]]
        (for [x (permutations (dec n) coll) y coll]
          (conj x y)))))
 
@@ -282,26 +288,33 @@
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
         join-on (if bind-var (conj join-on bind-var) join-on)
-        needed-args (remove join-on args)
+        needed-args (vec (remove join-on args))
         permutated-wm (permutations (count needed-args) (working-memory))
-        invoker (predicate-invoker args join-on)]
+        invoker (predicate-invoker args join-on)
+        [map filter] (if *lazy*  [map filter] [r/map r/filter])
+        join-fn (fn [m]
+                  (->> permutated-wm
+                       (filter #(try
+                                   (invoker pred m %)
+                                   (catch RuntimeException e
+                                     (debug " threw non fatal" e))))
+                       (map #(merge m
+                                     (zipmap needed-args %)
+                                     (when bind-var
+                                       (try
+                                         (when-let [bind-val (invoker pred m %)]
+                                           {bind-var bind-val})
+                                         (catch RuntimeException e
+                                           (debug " binding threw non fatal" e))))))))]
     (debug " multi-var-predicate")
     (debug " args" args)
     (debug " known args" join-on "- need to find" needed-args)
     (debug " permutations of wm" (ellipsis permutated-wm))
-    (for [m c1-am
-          wmes permutated-wm
-          :let [new-bindings (when bind-var
-                               (try
-                                 (when-let [bind-val (invoker pred m wmes)]
-                                   {bind-var bind-val})
-                                 (catch RuntimeException e
-                                   (debug " binding threw non fatal" e))))]
-          :when (try
-                  (or new-bindings (invoker pred m wmes))
-                  (catch RuntimeException e
-                    (debug " threw non fatal" e)))]
-      (merge m (zipmap needed-args wmes) new-bindings))))
+    (if *lazy*
+      (mapcat join-fn c1-am)
+      (->> c1-am
+           (r/mapcat join-fn)
+           (fold-into vector)))))
 
 (defn beta-join-node [c1 c2 c1-am binding-vars wm]
   (let [c2-am (alpha-memory c2 wm (some binding-vars (vars c2)))]
@@ -320,7 +333,7 @@
           result)))))
 
 (defn dummy-beta-join-node [c wm args binding-vars]
-  (beta-join-node '() c #{args} binding-vars wm))
+  (beta-join-node [] c #{args} binding-vars wm))
 
 (defn order-conditions [cs]
   (mapcat #(sort-by (comp count vars) %) (partition-by binding? cs)))
