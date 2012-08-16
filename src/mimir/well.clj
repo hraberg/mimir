@@ -271,18 +271,22 @@
   (and (seq? am) (= 1 (count am))
        (fn? (-> am first first val))))
 
+(defn permutations* [n coll]
+  (if (zero? n)
+    [[]]
+    (->> (permutations* (dec n) coll)
+         (r/mapcat #(r/map (fn [x] (cons x %)) coll)))))
+
 (defn permutations
   ([coll] (permutations (count coll) coll))
   ([n coll]
-     (if (zero? n)
-       [[]]
-       (for [x (permutations (dec n) coll) y coll]
-         (conj x y)))))
+     (fold-into vector (permutations* n coll))))
 
 (defn predicate-invoker [args join-on]
   (with-cache predicate-invokers [args join-on]
-    (eval `(fn [pred# {:syms [~@(filter join-on args)]} [~@(remove join-on args)]]
-             (pred# ~@args)))))
+    (eval `(fn [pred# {:syms [~@(filter join-on args)]}]
+             (fn [[~@(remove join-on args)]]
+               (pred# ~@args))))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on bind-var]
   (let [pred (-> c2-am first first val)
@@ -293,19 +297,20 @@
         invoker (predicate-invoker args join-on)
         [map filter] (if *lazy*  [map filter] [r/map r/filter])
         join-fn (fn [m]
-                  (->> permutated-wm
-                       (filter #(try
-                                   (invoker pred m %)
-                                   (catch RuntimeException e
-                                     (debug " threw non fatal" e))))
-                       (map #(merge m
-                                     (zipmap needed-args %)
-                                     (when bind-var
-                                       (try
-                                         (when-let [bind-val (invoker pred m %)]
-                                           {bind-var bind-val})
-                                         (catch RuntimeException e
-                                           (debug " binding threw non fatal" e))))))))]
+                  (let [invoker (invoker pred m)]
+                    (->> permutated-wm
+                         (filter #(try
+                                    (invoker %)
+                                    (catch RuntimeException e
+                                      (debug " threw non fatal" e))))
+                         (map #(merge m
+                                      (zipmap needed-args %)
+                                      (when bind-var
+                                        (try
+                                          (when-let [bind-val (invoker %)]
+                                            {bind-var bind-val})
+                                          (catch RuntimeException e
+                                            (debug " binding threw non fatal" e)))))))))]
     (debug " multi-var-predicate")
     (debug " args" args)
     (debug " known args" join-on "- need to find" needed-args)
