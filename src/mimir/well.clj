@@ -42,8 +42,6 @@
   ([x] (parser x identity identity))
   ([x atom-fn triplet-fn] (parser x atom-fn triplet-fn true))
   ([[x & xs] atom-fn triplet-fn match]
-
-
      (when x
        (cond (and match ((some-fn map? set? vector?) x)) (cons (atom-fn (list 'mimir.match/match (gensym "?") x))
                                                                (parser xs atom-fn triplet-fn match))
