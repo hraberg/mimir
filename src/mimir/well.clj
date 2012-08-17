@@ -2,7 +2,7 @@
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)]
-        [mimir.match :only (filter-walk maybe-singleton-coll)])
+        [mimir.match :only (filter-walk maybe-singleton-coll match all-vars *match-var?*)])
   (:require [clojure.core.reducers :as r])
   (:refer-clojure :exclude [assert])
   (:gen-class))
@@ -34,17 +34,26 @@
 (defn is-matcher? [x xs]
   (and (is-var? x) (not (symbol? (first xs)))))
 
+(defn matcher? [c]
+  (and (sequential? c)
+       (= 'mimir.match/match* (first c))))
+
 (defn parser
   ([x] (parser x identity identity))
-  ([[x & xs] atom-fn triplet-fn]
+  ([x atom-fn triplet-fn] (parser x atom-fn triplet-fn true))
+  ([[x & xs] atom-fn triplet-fn match]
+
+
      (when x
-       (cond ((some-fn
-               sequential? map? set? string?) x) (cons (atom-fn x)
-                                                       (parser xs atom-fn triplet-fn))
-               (is-matcher? x xs) (cons (atom-fn (list 'mimir.match/match* x (first xs)))
-                                        (parser (rest xs) atom-fn triplet-fn))
-               :else (cons (triplet-fn (cons x (take 2 xs)))
-                           (parser (drop 2 xs) atom-fn triplet-fn))))))
+       (cond (and match ((some-fn map? set? vector?) x)) (cons (atom-fn (list 'mimir.match/match (gensym "?") x))
+                                                               (parser xs atom-fn triplet-fn match))
+             ((some-fn sequential? map? set? string?) x) (cons (atom-fn x)
+                                                               (parser xs atom-fn triplet-fn match))
+             (and match (is-matcher? x xs)) (cons (atom-fn (list 'mimir.match/match x (first xs)))
+                                                  (parser (rest xs) atom-fn triplet-fn match))
+             (triplet? (cons x (take 2 xs))) (cons (triplet-fn (cons x (take 2 xs)))
+                                                   (parser (drop 2 xs) atom-fn triplet-fn match))
+             :else (cons x (parser xs atom-fn triplet-fn match))))))
 
 (defn quote-non-vars [rhs]
   (postwalk #(if (and (symbol? %)
@@ -89,11 +98,16 @@
               (str "... [total: " (count x)
                    "]"))))))
 
+(alter-var-root #'*match-var?* (constantly #(and (symbol? %)
+                                                             (not (or (resolve %) (is-var? %)
+                                                                      (re-matches #"\..*"(name %)) (re-matches #".*\."(name %)))))))
+
 (defmacro rule [name & body]
-  (let [[lhs _ rhs] (partition-by '#{=>} body)
+  (let [body (if ('#{=>} (first body)) (cons (list (gensym "?") '<- true) body) body)
+        [lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
         expanded-lhs (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
-        rhs (parser rhs identity expand-rhs)]
+        rhs (parser rhs identity expand-rhs false)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (~name (working-memory) ~'args))
@@ -101,7 +115,7 @@
                    (debug "rule" '~name '~*ns*)
                    (for [vars# (binding [*ns* '~*ns*]
                                  (check-rule '~(vec expanded-lhs) ~'wm ~'args))
-                         :let [{:syms ~(vars rhs)} vars#
+                         :let [{:syms ~(concat (all-vars lhs) (vars rhs))} vars#
                                ~'*vars* (map val (sort-by key vars#))]]
                      (do
                        (debug "rhs" vars#)
@@ -150,7 +164,7 @@
       form)))
 
 (defmacro tree-eval [tree]
-  (let [locals (keys (select-keys &env (mimir.match/filter-walk symbol? tree)))
+  (let [locals (keys (select-keys &env (filter-walk symbol? tree)))
         locals (into {} (map #(vector (list 'quote %) %) locals))]
     `(let [real-locals# ~locals]
        (postwalk (tree-eval-walk real-locals#) '~tree))))
@@ -165,9 +179,11 @@
 (defn match-using-predicate [c wme]
   (let [predicate (predicate-for c)]
     (try
-      (when (predicate wme)
+      (when-let [result (predicate wme)]
         (debug " evaluated to true" wme)
-        {'?1 wme})
+        (merge
+         {'?1 wme}
+         (when (matcher? c) result)))
       (catch RuntimeException e
         (debug " threw non fatal" e)))))
 
@@ -192,11 +208,12 @@
 
 (defn bind [to expr] expr)
 
-(defn binding? [[fst & _]]
-  (= 'mimir.well/bind fst))
+(defn binding? [c]
+  (and (sequential? c)
+       (= 'mimir.well/bind (first c))))
 
-(defn binding-var [[_ snd & _ :as c]]
-  (when (binding? c) snd))
+(defn binding-var [c]
+  (when (binding? c) (second c)))
 
 (defn multi-var-predicate? [c]
   (and (predicate? c) (> (count (vars c)) 1)))
@@ -228,10 +245,18 @@
 (defn retract* [fact]
   (wm-crud disj contains? "retracting" fact))
 
+(defn update [fact f & args]
+  (when-let [wm (first (filter #(match % fact) (working-memory)))]
+    (retract* wm)
+    (mimir.well/fact (condp some [f]
+                       fn? (f wm)
+                       vector? (apply update-in wm f args)
+                       f))))
+
 (defmacro facts [& wms]
   (when wms
     `(doall
-      (for [wm# ~(vec (parser wms identity quote-fact))]
+      (for [wm# ~(vec (parser wms identity quote-fact false))]
         (fact wm#)))))
 
 (defn fold-into [ctor coll]
@@ -263,9 +288,9 @@
 
 (defn cross [left right]
   (debug " nothing to join on, treating as or")
-  (into #{}
-        (for [x left y right]
-          (merge x y))))
+  (set
+   (for [x left y right]
+     (merge x y))))
 
 (defn multi-var-predicate-node? [am]
   (and (seq? am) (= 1 (count am))
@@ -288,9 +313,11 @@
              (fn [[~@(remove join-on args)]]
                (pred# ~@args))))))
 
-(defn deal-with-multi-var-predicates [c1-am c2-am join-on bind-var]
+(defn deal-with-multi-var-predicates [c1-am c2-am join-on c2]
   (let [pred (-> c2-am first first val)
         args (-> c2-am first meta :args)
+        bind-var (binding-var c2)
+        matcher (matcher? c2)
         join-on (if bind-var (conj join-on bind-var) join-on)
         needed-args (vec (remove join-on args))
         permutated-wm (permutations (count needed-args) (working-memory))
@@ -305,6 +332,8 @@
                                       (debug " threw non fatal" e))))
                          (map #(merge m
                                       (zipmap needed-args %)
+                                      (when matcher
+                                        (invoker %))
                                       (when bind-var
                                         (try
                                           (when-let [bind-val (invoker %)]
@@ -331,7 +360,7 @@
         (let [result (cond
                       (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates
                                                           c1-am c2-am
-                                                          join-on (binding-var c2))
+                                                          join-on c2)
                       (empty? join-on) (cross c1-am c2-am)
                       :else (join c1-am c2-am))]
           (debug "result" (ellipsis result))
@@ -344,7 +373,7 @@
   (mapcat #(sort-by (comp count vars) %) (partition-by binding? cs)))
 
 (defn binding-vars-for-rule [cs]
-  (into #{} (map binding-var (filter binding? cs))))
+  (set (map binding-var (filter binding? cs))))
 
 (defn check-rule
   ([cs wm] (check-rule cs wm {}))
@@ -362,7 +391,11 @@
   ([] (run-once (working-memory) (productions)))
   ([wm productions]
      (->> productions
-          (mapcat #(% wm {})))))
+          (mapcat #(% wm {}))
+          doall)))
+
+(defn run*
+  ([] (repeatedly run-once)))
 
 (defn run
   ([] (run *net*))

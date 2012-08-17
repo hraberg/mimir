@@ -5,7 +5,7 @@
 
 (defmacro match? [& expected]
   (when expected
-    `(is (= (set ~(vec (parser expected identity quote-fact))) (set (run))))))
+    `(is (= (set ~(vec (parser expected identity quote-fact false))) (run)))))
 
 (defn no-matches? []
   (match?))

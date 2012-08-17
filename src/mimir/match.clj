@@ -85,6 +85,8 @@
                   acc)
          fn? (when (try (pattern x) (catch RuntimeException _))
                (bind-vars x pattern acc))
+         keyword? (when (or (contains? x pattern) (= x pattern))
+                     (bind-vars x pattern acc))
          set? (loop [[k & ks] (seq pattern)
                      acc acc]
                 (when k
@@ -96,8 +98,9 @@
                        acc acc]
                   (if-not k
                     (bind-vars x pattern acc)
-                    (when-let [acc (match* (x k) (pattern k) acc)]
-                      (recur ks (bind-vars (x k) (pattern k) acc))))))
+                    (when (contains? x k)
+                      (when-let [acc (match* (x k) (pattern k) acc)]
+                        (recur ks (bind-vars (x k) (pattern k) acc)))))))
          sequential? (when (sequential? x)
                        (loop [[p & ps] pattern
                               [y & ys] x
