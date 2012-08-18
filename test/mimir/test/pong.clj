@@ -13,7 +13,7 @@
       =>
       (update :ball [:ball] #(mapv + [dx dy] %)))
 
-(defn place-ball [width height]
+(defn place-ball-at-center [width height]
   (update :ball {:ball [(int (/ width 2)) (rand-int height)]}))
 
 (defn score [who]
@@ -23,14 +23,14 @@
       {:screen [width height]}
       {:ball [0 _]}
       =>
-      (place-ball width height)
+      (place-ball-at-center width height)
       (score :computer))
 
 (rule player-scores
       {:screen [width height]}
       {:ball [width _]}
       =>
-      (place-ball width height)
+      (place-ball-at-center width height)
       (score :human))
 
 
@@ -154,7 +154,7 @@
   (header))
 
 (defn start-game [x y]
-  (place-ball x y)
+  (place-ball-at-center x y)
   (update :speed {:speed [1 1]})
   (create-paddle :human 2 (center y paddle-size))
   (create-paddle :computer (- x 2) (center y paddle-size)))
