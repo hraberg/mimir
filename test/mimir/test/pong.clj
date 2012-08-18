@@ -1,26 +1,20 @@
 (ns mimir.test.pong
   (:use [mimir.well :only (update rule fact facts reset run* is-not)]
-        [mimir.match :only (condm truth)]
-        [mimir.test.common]
-        [clojure.test])
+        [mimir.match :only (condm truth)])
   (:require [lanterna.screen :as s]))
 
 (reset)
 
 (def x 0)
 (def y 1)
-
 (def paddle-size 5)
 
 (facts {:ball [10 10]}
        {:speed [1 1]})
 
 (rule move-ball
-
       {:speed [dx dy]}
-
       =>
-
       (update :ball [:ball] #(mapv + [dx dy] %)))
 
 (defn place-ball [width height]
@@ -30,24 +24,18 @@
   (update {:player who} [:score] inc))
 
 (rule left-wall
-
       {:screen [width height]}
       {:ball [0 _]}
       {:speed [neg? _]}
-
       =>
-
       (place-ball width height)
       (score :computer))
 
 (rule right-wall
-
       {:screen [width height]}
       {:ball [width _]}
       {:speed [pos? _]}
-
       =>
-
       (place-ball width height)
       (score :human))
 
@@ -56,91 +44,64 @@
   (update :speed [:speed axis] -))
 
 (rule ball-hits-paddle
-
       ?ball :ball
       ?speed :speed
-      {:paddle [(+ (get-in ?speed [:speed x])
-                   (get-in ?ball [:ball x]))
+      {:paddle [(+ (get-in ?speed [:speed x]) (get-in ?ball [:ball x]))
                 #(<= % (get-in ?ball [:ball y]) (+ paddle-size %))]}
-
       =>
-
       (bounce x))
 
 (rule floor
-
       {:ball [_ 0]}
       {:speed [_ neg?]}
-
       =>
-
       (bounce y))
 
 (rule ceiling
-
       {:screen [_ height]}
       {:ball [_ height]}
       {:speed [_ pos?]}
-
       =>
-
       (bounce y))
 
 (defn move-paddle [who direction]
   (update {:player who} [:paddle y] direction))
 
 (rule paddle-up
-
       {:key :up}
       {:player :human :paddle [_ pos?]}
-
       =>
-
       (move-paddle :human dec))
 
 (rule paddle-down
-
       {:key :down}
       ?screen :screen
       ?paddle {:player :human}
-
       (<= (+ paddle-size (get-in ?paddle [:paddle y])) (get-in ?screen [:screen y]))
-
       =>
-
       (move-paddle :human inc))
 
 (defn middle-of-paddle [y]
   (+ (int (/ paddle-size 2)) y))
 
 (rule paddle-up-ai
-
       ?ball :ball
       {:player :computer :paddle [_ #(< (get-in ?ball [:ball y]) (middle-of-paddle %))]}
       {:player :computer :paddle [_ pos?]}
-
       =>
-
       (move-paddle :computer dec))
 
 (rule paddle-down-ai
-
       ?ball :ball
       ?screen :screen
-
       ?paddle {:player :computer :paddle [_ #(> (get-in ?ball [:ball y]) (middle-of-paddle %))]}
       (<= (+ paddle-size (get-in ?paddle [:paddle y])) (get-in ?screen [:screen y]))
-
       =>
-
       (move-paddle :computer inc))
 
 (rule exit
-
       {:key :escape}
-
       =>
-
       :exit)
 
 (declare screen)
@@ -197,7 +158,6 @@
 
 (defn resize-screen [x y]
   (update :screen {:screen (mapv dec [x y])})
-
   (draw-background)
 
   (place-ball x y)
@@ -218,9 +178,8 @@
 (defn handle-event [e]
   (condm e
          {:ball [px py]} (draw-ball px py)
-         {:paddle [px py] :score s} (do
-                                      (draw-paddle px py)
-                                      (draw-score px py s))))
+         {:paddle [px py] :score s} (do (draw-paddle px py)
+                                        (draw-score px py s))))
 
 (defn main [screen-type]
   (def screen (s/get-screen screen-type))

@@ -135,7 +135,7 @@ Its pretty buggy for many different reasons, as well as verbose.
 
     lein trampoline run -m mimir.test.pong
 
-<img src=https://github.com/hraberg/mimir/raw/master/resources/pong.png alt="Mímir Pong" title="Mímir Pong" />
+[<img src=https://github.com/hraberg/mimir/raw/master/resources/pong.png alt="Mímir Pong" title="Mímir Pong" />](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj)
 
 
 #### Pattern Matching
