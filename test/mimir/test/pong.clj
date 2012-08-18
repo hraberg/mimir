@@ -34,7 +34,6 @@
       (place-ball-at-center width height)
       (score :human))
 
-
 (defn bounce [axis]
   (update :speed [:speed axis] -))
 
