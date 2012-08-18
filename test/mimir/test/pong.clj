@@ -22,7 +22,6 @@
 (rule computer-scores
       {:screen [width height]}
       {:ball [0 _]}
-      {:speed [neg? _]}
       =>
       (place-ball width height)
       (score :computer))
@@ -30,7 +29,6 @@
 (rule player-scores
       {:screen [width height]}
       {:ball [width _]}
-      {:speed [pos? _]}
       =>
       (place-ball width height)
       (score :human))
