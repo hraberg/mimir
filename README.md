@@ -129,7 +129,7 @@ For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/m
 
 ### Pong
 
-[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj) is an attempt to write something less trivial where the working memory keeps changing. It doesn't fully work yet but has shown few weaknesses in the assumptions made in Mímir which needs addressing. It uses [`clojure-lanterna`](https://github.com/sjl/clojure-lanterna/) for text UI.
+[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj) is an attempt to write something less trivial where the working memory keeps changing. It doesn't fully work yet but has shown a few weaknesses in the assumptions made in Mímir which needs addressing. It uses [`clojure-lanterna`](https://github.com/sjl/clojure-lanterna/) for text UI.
 
     lein trampoline run -m mimir.test.pong
 
