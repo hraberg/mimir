@@ -17,7 +17,7 @@
 (defn maybe-singleton-coll [x]
   (if (singleton-coll? x) (first x) x))
 
-(def ^:dynamic *match-var?* #(and (symbol? %) (not (or (resolve %) (re-matches #".*#"(name %))))))
+(def ^:dynamic *match-var?* #(and (symbol? %) (not (or (resolve %) ('#{do fn* let* if} %) (re-matches #".*#"(name %))))))
 
 (def ^:dynamic *var-symbol* symbol)
 

@@ -1,36 +1,33 @@
 (ns mimir.test.pong
-  (:use [mimir.well :only (update rule fact facts retract reset run* run-once is-not)]
+  (:use [mimir.well :only (update rule fact facts reset run* is-not)]
         [mimir.match :only (condm truth)]
         [mimir.test.common]
         [clojure.test])
-  (:require [lanterna.screen :as s]
-            [lanterna.terminal :as t]))
+  (:require [lanterna.screen :as s]))
 
 (reset)
 
 (def x 0)
 (def y 1)
 
-(defn bounce [axis]
-  (update :speed [:speed axis] -))
+(def paddle-size 5)
 
-(defn place-ball [width height]
-  (update :ball [:ball] [(int (/ width 2)) (rand-int height)]))
-
-(defn score [who width height]
-  (place-ball width height)
-  (update {:player who} [:score] inc))
-
-(facts {:ball [0 0]}
+(facts {:ball [10 10]}
        {:speed [1 1]})
 
-(rule move
+(rule move-ball
 
       {:speed [dx dy]}
 
       =>
 
       (update :ball [:ball] #(mapv + [dx dy] %)))
+
+(defn place-ball [width height]
+  (update :ball [:ball] [(int (/ width 2)) (rand-int height)]))
+
+(defn score [who]
+  (update {:player who} [:score] inc))
 
 (rule left-wall
 
@@ -40,7 +37,8 @@
 
       =>
 
-      (score :computer width height))
+      (place-ball width height)
+      (score :computer))
 
 (rule right-wall
 
@@ -50,8 +48,24 @@
 
       =>
 
-      (score :human width height))
+      (place-ball width height)
+      (score :human))
 
+
+(defn bounce [axis]
+  (update :speed [:speed axis] -))
+
+(rule ball-hits-paddle
+
+      ?ball :ball
+      ?speed :speed
+      {:paddle [(+ (get-in ?speed [:speed x])
+                   (get-in ?ball [:ball x]))
+                #(<= % (get-in ?ball [:ball y]) (+ paddle-size %))]}
+
+      =>
+
+      (bounce x))
 
 (rule floor
 
@@ -72,18 +86,6 @@
 
       (bounce y))
 
-(declare screen)
-
-(def colors {:fg :white :bg :black})
-(def reverse-video {:fg (:bg colors) :bg (:fg colors)})
-
-(def paddle-size 5)
-(def paddle-margin 2)
-(def score-line 2)
-
-(defn above-bottom? [y py]
-  (and (> (- y paddle-size) py)))
-
 (defn move-paddle [who direction]
   (update {:player who} [:paddle y] direction))
 
@@ -99,13 +101,39 @@
 (rule paddle-down
 
       {:key :down}
-      {:screen [_ height]}
-;      {:player :human :paddle [_ (partial above-bottom? height)]}
-;      (< py (- height paddle-size))
+      ?screen :screen
+      ?paddle {:player :human}
+
+      (<= (+ paddle-size (get-in ?paddle [:paddle y])) (get-in ?screen [:screen y]))
 
       =>
 
       (move-paddle :human inc))
+
+(defn middle-of-paddle [y]
+  (+ (int (/ paddle-size 2)) y))
+
+(rule paddle-up-ai
+
+      ?ball :ball
+      {:player :computer :paddle [_ #(< (get-in ?ball [:ball y]) (middle-of-paddle %))]}
+      {:player :computer :paddle [_ pos?]}
+
+      =>
+
+      (move-paddle :computer dec))
+
+(rule paddle-down-ai
+
+      ?ball :ball
+      ?screen :screen
+
+      ?paddle {:player :computer :paddle [_ #(> (get-in ?ball [:ball y]) (middle-of-paddle %))]}
+      (<= (+ paddle-size (get-in ?paddle [:paddle y])) (get-in ?screen [:screen y]))
+
+      =>
+
+      (move-paddle :computer inc))
 
 (rule exit
 
@@ -114,6 +142,11 @@
       =>
 
       :exit)
+
+(declare screen)
+
+(def colors {:fg :white :bg :black})
+(def reverse-video {:fg (:bg colors) :bg (:fg colors)})
 
 (defn blank []
   (s/clear screen)
@@ -169,15 +202,17 @@
 
   (place-ball x y)
 
-  (paddle :human paddle-margin (center y paddle-size))
-  (paddle :computer (- x paddle-margin) (center y paddle-size))
+  (paddle :human 2 (center y paddle-size))
+  (paddle :computer (- x 2) (center y paddle-size))
 
   (s/redraw screen))
 
 (defn frame [events]
   (Thread/sleep 25)
   (s/redraw screen)
-  (update {:key truth} [:key] (s/get-key screen))
+  (update {:key truth} [:key] (->> (repeatedly #(s/get-key screen))
+                                   (take-while identity)
+                                   last))
   events)
 
 (defn handle-event [e]

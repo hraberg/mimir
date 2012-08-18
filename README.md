@@ -131,9 +131,11 @@ For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/m
 
 [This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj) is an attempt to write something less trivial where the working memory keeps changing. It doesn't fully work yet but has shown many weaknesses in the assumptions made in Mímir which needs addressing. It uses [`clojure-lanterna`](https://github.com/sjl/clojure-lanterna/) for text UI.
 
+Its pretty buggy for many different reasons, as well as verbose.
+
     lein trampoline run -m mimir.test.pong
 
-(The ball doesn't collide with the paddles yet.)
+<img src=https://github.com/hraberg/mimir/raw/master/resources/pong.png alt="Mímir Pong" title="Mímir Pong" />
 
 
 #### Pattern Matching
