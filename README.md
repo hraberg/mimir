@@ -141,6 +141,7 @@ For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/m
 * Some variations of conditions that seem valid just doesn't work as expected (potentially related to the above).
 * At times it fails to start with  an exception related to `mimir.well/update`.
 * The match vars are bound to normal vars using a simple aliasing hack, hence the name mismatch (`dx` vs `dx`).
+* Using :swing doesn't work properly.
 
 
 #### Pattern Matching
