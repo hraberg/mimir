@@ -1,5 +1,5 @@
 (ns mimir.test.pong
-  (:use [mimir.well :only (update rule fact facts reset run* is-not)]
+  (:use [mimir.well :only (update rule reset run* is-not)]
         [mimir.match :only (condm)])
   (:require [lanterna.screen :as s]))
 
