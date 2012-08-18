@@ -1,6 +1,6 @@
 (ns mimir.test.pong
   (:use [mimir.well :only (update rule fact facts reset run* is-not)]
-        [mimir.match :only (condm truth)])
+        [mimir.match :only (condm)])
   (:require [lanterna.screen :as s]))
 
 (reset)
@@ -169,9 +169,9 @@
 (defn frame [events]
   (s/redraw screen)
   (Thread/sleep 20)
-  (update {:key truth} [:key] (->> (repeatedly #(s/get-key screen))
-                                   (take-while identity)
-                                   last))
+  (update :key {:key (->> (repeatedly #(s/get-key screen))
+                          (take-while identity)
+                          last)})
   events)
 
 (defn handle-event [e]
