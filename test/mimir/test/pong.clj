@@ -8,7 +8,7 @@
 (def axis {:x 0 :y 1})
 (def paddle-size 5)
 
-(rule move-ball
+(rule ball-keeps-moving
       {:speed [dx dy]}
       =>
       (update :ball [:ball] #(mapv + [dx dy] %)))
@@ -19,7 +19,7 @@
 (defn score [who]
   (update {:player who} [:score] inc))
 
-(rule left-wall
+(rule computer-scores
       {:screen [width height]}
       {:ball [0 _]}
       {:speed [neg? _]}
@@ -27,7 +27,7 @@
       (place-ball width height)
       (score :computer))
 
-(rule right-wall
+(rule player-scores
       {:screen [width height]}
       {:ball [width _]}
       {:speed [pos? _]}
@@ -39,20 +39,20 @@
 (defn bounce [axis]
   (update :speed [:speed axis] -))
 
-(rule paddle
+(rule ball-hits-paddle
       {:ball [bx by]}
       {:speed [dx _]}
       {:paddle [(+ ?dx ?bx) #(<= % ?by (+ paddle-size %))]}
       =>
       (bounce (:x axis)))
 
-(rule floor
+(rule ball-hits-floor
       {:ball [_ 0]}
       {:speed [_ neg?]}
       =>
       (bounce (:y axis)))
 
-(rule ceiling
+(rule ball-hits-ceiling
       {:screen [_ height]}
       {:ball [_ height]}
       {:speed [_ pos?]}
@@ -62,13 +62,13 @@
 (defn move-paddle [who direction]
   (update {:player who} [:paddle (:y axis)] direction))
 
-(rule paddle-up
+(rule player-moves-paddle-up
       {:key :up}
       {:player :human :paddle [_ pos?]}
       =>
       (move-paddle :human dec))
 
-(rule paddle-down
+(rule player-moves-paddle-down
       {:key :down}
       {:screen [_ height]}
       {:player :human :paddle [_ py]}
@@ -79,14 +79,14 @@
 (defn middle-of-paddle [y]
   (+ (int (/ paddle-size 2)) y))
 
-(rule paddle-up-ai
+(rule computer-moves-paddle-up
       {:ball [_ by]}
       {:player :computer :paddle [_ py]}
       (< 0 ?by (middle-of-paddle ?py))
       =>
       (move-paddle :computer dec))
 
-(rule paddle-down-ai
+(rule computer-moves-paddle-down
       {:ball [_ by]}
       {:screen [_ height]}
       {:player :computer :paddle [_ py]}
@@ -95,7 +95,7 @@
       =>
       (move-paddle :computer inc))
 
-(rule exit
+(rule player-exits-game
       {:key :escape}
       =>
       :exit)
