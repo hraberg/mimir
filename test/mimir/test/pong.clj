@@ -85,16 +85,17 @@
 
 (rule paddle-up-ai
       {:ball [_ by]}
-      {:player :computer :paddle [_ #(< ?by (middle-of-paddle %))]}
-      {:player :computer :paddle [_ pos?]}
+      {:player :computer :paddle [_ py]}
+      (< 0 ?by (middle-of-paddle ?py))
       =>
       (move-paddle :computer dec))
 
 (rule paddle-down-ai
       {:ball [_ by]}
       {:screen [_ height]}
-      {:player :computer :paddle [_ #(> ?by (middle-of-paddle %))]}
-      {:player :computer :paddle [_ #(<= (+ paddle-size %) ?height)]}
+      {:player :computer :paddle [_ py]}
+      (> ?by (middle-of-paddle ?py))
+      (<= (+ paddle-size ?py) ?height)
       =>
       (move-paddle :computer inc))
 
@@ -167,7 +168,7 @@
   (s/redraw screen))
 
 (defn frame [events]
-  (Thread/sleep 25)
+  (Thread/sleep 20)
   (s/redraw screen)
   (update {:key truth} [:key] (->> (repeatedly #(s/get-key screen))
                                    (take-while identity)

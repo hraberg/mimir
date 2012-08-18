@@ -341,7 +341,10 @@
                          (map #(merge m
                                       (zipmap needed-args %)
                                       (when matcher
-                                        (alias-match-vars (invoker %)))
+                                        (try
+                                          (alias-match-vars (invoker %))
+                                          (catch RuntimeException e
+                                            (debug " matcher threw non fatal" e))))
                                       (when bind-var
                                         (try
                                           (when-let [bind-val (invoker %)]
