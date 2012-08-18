@@ -7,6 +7,7 @@
 
 (def axis {:x 0 :y 1})
 (def paddle-size 5)
+(defn half [n] (bit-shift-right n 1))
 
 (rule ball-keeps-moving
       {:speed [dx dy]}
@@ -14,7 +15,7 @@
       (update :ball [:ball] #(mapv + [dx dy] %)))
 
 (defn place-ball-at-center [width height]
-  (update :ball {:ball [(int (/ width 2)) (rand-int height)]}))
+  (update :ball {:ball [(half width) (rand-int height)]}))
 
 (defn score [who]
   (update {:player who} [:score] inc))
@@ -75,7 +76,7 @@
       (move-paddle :human inc))
 
 (defn middle-of-paddle [y]
-  (+ (int (/ paddle-size 2)) y))
+  (+ (half paddle-size) y))
 
 (rule computer-moves-paddle-up
       {:ball [_ by]}
@@ -115,7 +116,7 @@
       (puts 0 y (apply str (repeat x " "))))))
 
 (defn center [total length]
-  (int (- (/ total 2) (/ length 2))))
+  (- (half total) (half length)))
 
 (defn centered-text [y s]
   (let [[x _] (s/get-size screen)]
@@ -124,7 +125,7 @@
 (defn draw-net []
   (let [[x y] (s/get-size screen)]
     (doseq [y (range 0 y 3)]
-      (puts (int (/ x 2)) y " " reverse-video))))
+      (puts (half x) y " " reverse-video))))
 
 (defn draw-score [x y score]
   (puts x 2 (str score)
