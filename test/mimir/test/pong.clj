@@ -5,8 +5,7 @@
 
 (reset)
 
-(def x 0)
-(def y 1)
+(def axis {:x 0 :y 1})
 (def paddle-size 5)
 
 (rule move-ball
@@ -45,23 +44,23 @@
       {:speed [dx _]}
       {:paddle [(+ ?dx ?bx) #(<= % ?by (+ paddle-size %))]}
       =>
-      (bounce x))
+      (bounce (:x axis)))
 
 (rule floor
       {:ball [_ 0]}
       {:speed [_ neg?]}
       =>
-      (bounce y))
+      (bounce (:y axis)))
 
 (rule ceiling
       {:screen [_ height]}
       {:ball [_ height]}
       {:speed [_ pos?]}
       =>
-      (bounce y))
+      (bounce (:y axis)))
 
 (defn move-paddle [who direction]
-  (update {:player who} [:paddle y] direction))
+  (update {:player who} [:paddle (:y axis)] direction))
 
 (rule paddle-up
       {:key :up}
@@ -131,7 +130,7 @@
 
 (defn draw-score [x y score]
   (puts x 2 (str score)
-              (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
+        (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
 
 (defn draw-paddle [x y]
   (doseq [y (range y (+ y paddle-size))]
@@ -165,12 +164,11 @@
 (defn resize-screen [x y]
   (update :screen {:screen (mapv dec [x y])})
   (draw-background)
-  (start-game x y)
-  (s/redraw screen))
+  (start-game x y))
 
 (defn frame [events]
-  (Thread/sleep 20)
   (s/redraw screen)
+  (Thread/sleep 20)
   (update {:key truth} [:key] (->> (repeatedly #(s/get-key screen))
                                    (take-while identity)
                                    last))
