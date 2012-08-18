@@ -39,7 +39,7 @@
 (defn bounce [axis]
   (update :speed [:speed axis] -))
 
-(rule ball-hits-paddle
+(rule paddle
       {:ball [bx by]}
       {:speed [dx _]}
       {:paddle [(+ ?dx ?bx) #(<= % ?by (+ paddle-size %))]}
@@ -138,7 +138,7 @@
   (puts x (dec y) " ")
   (puts x (+ y paddle-size) " "))
 
-(defn paddle [who x y]
+(defn create-paddle [who x y]
   (update {:player who} merge {:paddle [x y] :score 0})
   (draw-paddle x y)
   (draw-score x y 0))
@@ -158,8 +158,8 @@
 (defn start-game [x y]
   (place-ball x y)
   (update :speed {:speed [1 1]})
-  (paddle :human 2 (center y paddle-size))
-  (paddle :computer (- x 2) (center y paddle-size)))
+  (create-paddle :human 2 (center y paddle-size))
+  (create-paddle :computer (- x 2) (center y paddle-size)))
 
 (defn resize-screen [x y]
   (update :screen {:screen (mapv dec [x y])})
