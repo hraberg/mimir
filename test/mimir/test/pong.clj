@@ -9,16 +9,13 @@
 (def y 1)
 (def paddle-size 5)
 
-(facts {:ball [10 10]}
-       {:speed [1 1]})
-
 (rule move-ball
       {:speed [dx dy]}
       =>
       (update :ball [:ball] #(mapv + [dx dy] %)))
 
 (defn place-ball [width height]
-  (update :ball [:ball] [(int (/ width 2)) (rand-int height)]))
+  (update :ball {:ball [(int (/ width 2)) (rand-int height)]}))
 
 (defn score [who]
   (update {:player who} [:score] inc))
@@ -161,6 +158,7 @@
   (draw-background)
 
   (place-ball x y)
+  (update :speed {:speed [1 1]})
 
   (paddle :human 2 (center y paddle-size))
   (paddle :computer (- x 2) (center y paddle-size))
