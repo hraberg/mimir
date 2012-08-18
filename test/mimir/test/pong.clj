@@ -106,8 +106,8 @@
 (def colors {:fg :white :bg :black})
 (def reverse-video {:fg (:bg colors) :bg (:fg colors)})
 
-(defn put-string
-  ([x y s] (put-string x y s colors))
+(defn puts
+  ([x y s] (puts x y s colors))
   ([x y s opts] (s/put-string screen x y s opts)))
 
 (defn blank []
@@ -115,29 +115,29 @@
   (s/redraw screen)
   (let [[x y] (s/get-size screen)]
     (doseq [y (range 0 y)]
-      (put-string 0 y (apply str (repeat x " "))))))
+      (puts 0 y (apply str (repeat x " "))))))
 
 (defn center [total length]
   (int (- (/ total 2) (/ length 2))))
 
 (defn centered-text [y s]
   (let [[x _] (s/get-size screen)]
-    (put-string (center x (count s)) y s)))
+    (puts (center x (count s)) y s)))
 
 (defn draw-net []
   (let [[x y] (s/get-size screen)]
     (doseq [y (range 0 y 3)]
-      (put-string (int (/ x 2)) y " " reverse-video))))
+      (puts (int (/ x 2)) y " " reverse-video))))
 
 (defn draw-score [x y score]
-  (put-string x 2 (str score)
+  (puts x 2 (str score)
               (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
 
 (defn draw-paddle [x y]
   (doseq [y (range y (+ y paddle-size))]
-    (put-string  x y " " reverse-video))
-  (put-string x (dec y) " ")
-  (put-string x (+ y paddle-size) " "))
+    (puts  x y " " reverse-video))
+  (puts x (dec y) " ")
+  (puts x (+ y paddle-size) " "))
 
 (defn paddle [who x y]
   (update {:player who} merge {:paddle [x y] :score 0})
