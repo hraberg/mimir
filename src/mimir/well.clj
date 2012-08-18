@@ -93,12 +93,13 @@
      (let [[start more] (split-at n (take (inc n) x))]
        (str (seq start)
             (when more
-              (str "... [total: " (count x)
-                   "]"))))))
+              (str "... [total: " (count x) "]"))))))
 
 (alter-var-root #'*match-var?* (constantly #(and (symbol? %)
-                                                             (not (or (resolve %) (is-var? %)
-                                                                      (re-matches #"\..*"(name %)) (re-matches #".*\."(name %)))))))
+                                                 (not (or (resolve %) (is-var? %)
+                                                          (re-matches #"\..*"(name %))
+                                                          (re-matches #".*\."(name %))
+                                                          (re-matches #".*#"(name %)))))))
 
 (defmacro rule [name & body]
   (let [body (if ('#{=>} (first body)) (cons (list (gensym "?") '<- true) body) body)
@@ -136,7 +137,8 @@
          (get-in @*net* ['~cache-name key#])))))
 
 (defn join-on [x y]
-  (intersection (set (vars x)) (set (vars y))))
+  (let [vars-and-match-vars #(set (concat (remove '#{_} (all-vars %)) (vars %)))]
+    (intersection (vars-and-match-vars x) (vars-and-match-vars y))))
 
 (defn var-sym [x]
   (symbol (str "?" x)))
@@ -244,11 +246,14 @@
   (wm-crud disj contains? "retracting" fact))
 
 (defn update [fact f & args]
-  (when-let [wm (first (filter #(match % fact) (working-memory)))]
+  (let [wm (or (first (filter #(match % fact) (working-memory)))
+               fact)]
     (retract* wm)
     (mimir.well/fact (condp some [f]
-                       fn? (f wm)
-                       vector? (apply update-in wm f args)
+                       fn? (apply f wm args)
+                       vector? (let [[a & _] args
+                                     args (if (fn? a) args [(constantly a)])]
+                                 (apply update-in wm f args))
                        f))))
 
 (defmacro facts [& wms]

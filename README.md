@@ -127,6 +127,15 @@ Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))
 
 For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
 
+### Pong
+
+[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj) is an attempt to write something less trivial where the working memory keeps changing. It doesn't fully work yet but has shown many weaknesses in the assumptions made in Mímir which needs addressing. It uses [`clojure-lanterna`](https://github.com/sjl/clojure-lanterna/) for text UI.
+
+    lein trampoline run -m mimir.test.pong
+
+(The ball doesn't collide with the paddles yet.)
+
+
 #### Pattern Matching
 
 Mimir contains an even more experimental [pattern matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj), which can be seen in action on maps in the [Rosencrantz golfers example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/golfers.clj) above. This pattern matcher and it's relationship and influence on Mimir proper is still a bit up in the air - I hope to iron this out over the next week or so. It can be used on it's own:

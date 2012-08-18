@@ -17,7 +17,7 @@
 (defn maybe-singleton-coll [x]
   (if (singleton-coll? x) (first x) x))
 
-(def ^:dynamic *match-var?* #(and (symbol? %) (not (resolve %))))
+(def ^:dynamic *match-var?* #(and (symbol? %) (not (or (resolve %) (re-matches #".*#"(name %))))))
 
 (def ^:dynamic *var-symbol* symbol)
 
@@ -39,11 +39,12 @@
     form))
 
 (defn meta-walk [form]
-  (if-let [m (meta form)]
-    (preserve-meta (walk meta-walk identity form) m)
-    (if (*match-var?* form)
-      (list 'quote form)
-      (walk meta-walk identity form))))
+  (let [m (dissoc (meta form) :line)]
+    (if (seq m)
+      (preserve-meta (walk meta-walk identity form) m)
+      (if (*match-var?* form)
+        (list 'quote form)
+        (walk meta-walk identity form)))))
 
 (defn bound-vars [x]
   (let [vars (transient [])
