@@ -44,10 +44,9 @@
   (update :speed [:speed axis] -))
 
 (rule ball-hits-paddle
-      ?ball :ball
-      ?speed :speed
-      {:paddle [(+ (get-in ?speed [:speed x]) (get-in ?ball [:ball x]))
-                #(<= % (get-in ?ball [:ball y]) (+ paddle-size %))]}
+      {:ball [bx by]}
+      {:speed [dx _]}
+      {:paddle [(+ ?dx ?bx) #(<= % ?by (+ paddle-size %))]}
       =>
       (bounce x))
 
@@ -75,9 +74,9 @@
 
 (rule paddle-down
       {:key :down}
-      ?screen :screen
-      ?paddle {:player :human}
-      (<= (+ paddle-size (get-in ?paddle [:paddle y])) (get-in ?screen [:screen y]))
+      {:screen [_ height]}
+      {:player :human :paddle [_ py]}
+      (<= (+ paddle-size ?py) ?height)
       =>
       (move-paddle :human inc))
 
@@ -85,17 +84,17 @@
   (+ (int (/ paddle-size 2)) y))
 
 (rule paddle-up-ai
-      ?ball :ball
-      {:player :computer :paddle [_ #(< (get-in ?ball [:ball y]) (middle-of-paddle %))]}
+      {:ball [_ by]}
+      {:player :computer :paddle [_ #(< ?by (middle-of-paddle %))]}
       {:player :computer :paddle [_ pos?]}
       =>
       (move-paddle :computer dec))
 
 (rule paddle-down-ai
-      ?ball :ball
-      ?screen :screen
-      ?paddle {:player :computer :paddle [_ #(> (get-in ?ball [:ball y]) (middle-of-paddle %))]}
-      (<= (+ paddle-size (get-in ?paddle [:paddle y])) (get-in ?screen [:screen y]))
+      {:ball [_ by]}
+      {:screen [_ height]}
+      {:player :computer :paddle [_ #(> ?by (middle-of-paddle %))]}
+      {:player :computer :paddle [_ #(<= (+ paddle-size %) ?height)]}
       =>
       (move-paddle :computer inc))
 

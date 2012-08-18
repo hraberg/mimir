@@ -177,6 +177,10 @@
       (debug " compiling" c)
       (with-meta (eval src) {:src c :args args}))))
 
+(defn alias-match-vars [m]
+  (merge m
+         (zipmap (map (comp var-sym name) (keys m)) (vals m))))
+
 (defn match-using-predicate [c wme]
   (let [predicate (predicate-for c)]
     (try
@@ -184,7 +188,7 @@
         (debug " evaluated to true" wme)
         (merge
          {'?1 wme}
-         (when (matcher? c) result)))
+         (when (matcher? c) (alias-match-vars result))))
       (catch RuntimeException e
         (debug " threw non fatal" e)))))
 
@@ -337,7 +341,7 @@
                          (map #(merge m
                                       (zipmap needed-args %)
                                       (when matcher
-                                        (invoker %))
+                                        (alias-match-vars (invoker %)))
                                       (when bind-var
                                         (try
                                           (when-let [bind-val (invoker %)]
