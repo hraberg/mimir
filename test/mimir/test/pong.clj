@@ -106,35 +106,38 @@
 (def colors {:fg :white :bg :black})
 (def reverse-video {:fg (:bg colors) :bg (:fg colors)})
 
+(defn put-string
+  ([x y s] (put-string x y s colors))
+  ([x y s opts] (s/put-string screen x y s opts)))
+
 (defn blank []
   (s/clear screen)
   (s/redraw screen)
   (let [[x y] (s/get-size screen)]
     (doseq [y (range 0 y)]
-      (s/put-string screen 0 y (apply str (repeat x " ")) colors))
-    (s/redraw screen)))
+      (put-string 0 y (apply str (repeat x " "))))))
 
 (defn center [total length]
   (int (- (/ total 2) (/ length 2))))
 
 (defn centered-text [y s]
   (let [[x _] (s/get-size screen)]
-    (s/put-string screen (center x (count s)) y s colors)))
+    (put-string (center x (count s)) y s)))
 
 (defn draw-net []
   (let [[x y] (s/get-size screen)]
     (doseq [y (range 0 y 3)]
-      (s/put-string screen (int (/ x 2)) y " " reverse-video))))
+      (put-string (int (/ x 2)) y " " reverse-video))))
 
 (defn draw-score [x y score]
-  (s/put-string screen x 2 (str score)
-                (if (< y score (+ y paddle-size)) reverse-video colors)))
+  (put-string x 2 (str score)
+              (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
 
 (defn draw-paddle [x y]
   (doseq [y (range y (+ y paddle-size))]
-    (s/put-string screen x y " " reverse-video))
-  (s/put-string screen x (dec y) " " colors)
-  (s/put-string screen x (+ y paddle-size) " " colors))
+    (put-string  x y " " reverse-video))
+  (put-string x (dec y) " ")
+  (put-string x (+ y paddle-size) " "))
 
 (defn paddle [who x y]
   (update {:player who} merge {:paddle [x y] :score 0})
@@ -153,16 +156,16 @@
   (draw-net)
   (header))
 
+(defn start-game [x y]
+  (place-ball x y)
+  (update :speed {:speed [1 1]})
+  (paddle :human 2 (center y paddle-size))
+  (paddle :computer (- x 2) (center y paddle-size)))
+
 (defn resize-screen [x y]
   (update :screen {:screen (mapv dec [x y])})
   (draw-background)
-
-  (place-ball x y)
-  (update :speed {:speed [1 1]})
-
-  (paddle :human 2 (center y paddle-size))
-  (paddle :computer (- x 2) (center y paddle-size))
-
+  (start-game x y)
   (s/redraw screen))
 
 (defn frame [events]
