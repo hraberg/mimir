@@ -41,7 +41,8 @@
 
 (rule ball-hits-paddle
       {:ball [bx by]}
-      {:paddle [?bx #(<= % ?by (+ paddle-size %))]}
+      {:speed [dx _]}
+      {:paddle [(+ ?dx ?bx) #(<= % ?by (+ paddle-size %))]}
       =>
       (bounce (:x axis)))
 
