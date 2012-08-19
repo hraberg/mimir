@@ -75,13 +75,12 @@
 (rule computer-moves-paddle-up
       {:ball [_ by]}
       {:player :computer :paddle [_ py]}
-      (< 0 ?by (middle-of-paddle ?py))
+      (< ?by (middle-of-paddle ?py))
       =>
       (move-paddle :computer dec))
 
 (rule computer-moves-paddle-down
       {:ball [_ by]}
-      {:screen [_ height]}
       {:player :computer :paddle [_ py]}
       (> ?by (middle-of-paddle ?py))
       =>
