@@ -61,15 +61,11 @@
 
 (rule player-moves-paddle-up
       {:key :up}
-      {:player :human :paddle [_ pos?]}
       =>
       (move-paddle :human dec))
 
 (rule player-moves-paddle-down
       {:key :down}
-      {:screen [_ height]}
-      {:player :human :paddle [_ py]}
-      (<= (+ paddle-size ?py) ?height)
       =>
       (move-paddle :human inc))
 
@@ -88,9 +84,20 @@
       {:screen [_ height]}
       {:player :computer :paddle [_ py]}
       (> ?by (middle-of-paddle ?py))
-      (<= (+ paddle-size ?py) ?height)
       =>
       (move-paddle :computer inc))
+
+(rule paddle-hits-ceiling
+      {:player who :paddle [_ (complement pos?)]}
+      =>
+      (move-paddle who 0))
+
+(rule paddle-hits-floor
+      {:screen [_ height]}
+      {:player who :paddle [_ py]}
+      (> (+ paddle-size ?py) ?height)
+      =>
+      (move-paddle who (inc (- height paddle-size))))
 
 (declare screen)
 
