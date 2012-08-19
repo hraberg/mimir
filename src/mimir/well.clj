@@ -20,6 +20,7 @@
 
 (def ^:dynamic *lazy* false)
 
+
 (doseq [k (keys @*net*)]
   (eval `(defn ~(symbol (name k)) [] (~k @*net*))))
 
@@ -30,6 +31,8 @@
   (when-let [^String s (and (symbol? x) (name x))]
     (or (.startsWith s "?")
         (re-matches #"[A-Z]+" s))))
+
+(alter-var-root #'*match-var?* (constantly (every-pred *match-var?* (complement is-var?))))
 
 (defn is-matcher? [x xs]
   (and (is-var? x) (not (symbol? (first xs)))))
@@ -95,27 +98,19 @@
             (when more
               (str "... [total: " (count x) "]"))))))
 
-(alter-var-root #'*match-var?* (constantly #(and (symbol? %)
-                                                 (not (or (resolve %) (is-var? %)
-                                                          ('#{do fn* let* if} %)
-                                                          (re-matches #".*/.*"(str %))
-                                                          (re-matches #"\..*"(name %))
-                                                          (re-matches #".*\."(name %))
-                                                          (re-matches #".*#"(name %)))))))
-
 (defmacro rule [name & body]
   (let [body (if ('#{=>} (first body)) (cons (list (gensym "?") '<- true) body) body)
         [lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
-        expanded-lhs (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
+        expanded-lhs (->> (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
+                          (map #(with-meta % {:ns *ns*})))
         rhs (parser rhs identity expand-rhs false)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (~name (working-memory) ~'args))
                 ([~'wm ~'args]
                    (debug "rule" '~name '~*ns*)
-                   (for [vars# (binding [*ns* '~*ns*]
-                                 (check-rule '~(vec expanded-lhs) ~'wm ~'args))
+                   (for [vars# (check-rule '~(vec expanded-lhs) ~'wm ~'args)
                          :let [{:syms ~(concat (all-vars lhs) (vars rhs))} vars#
                                ~'*vars* (map val (sort-by key vars#))]]
                      (do
@@ -174,9 +169,11 @@
 (defn predicate-for [c]
   (with-cache predicate c
     (let [args (ordered-vars c)
-          src `(fn ~args ~c)]
+          src `(fn ~args ~c)
+          meta (meta c)]
       (debug " compiling" c)
-      (with-meta (eval src) {:src c :args args}))))
+      (binding [*ns* (or (:ns meta) *ns*)]
+        (with-meta (eval src) (merge meta {:src c :args args}))))))
 
 (defn alias-match-vars [m]
   (merge m
@@ -208,7 +205,7 @@
   (-> c first
       ((some-fn
         (every-pred
-         symbol? resolve)
+         symbol? (partial ns-resolve (or (-> c meta :ns) *ns*)))
         (every-pred
          (complement symbol?) ifn?)))))
 
@@ -292,7 +289,7 @@
   ([c wm needs-beta?]
      (let [var-to-index (var-to-index c)
            vars-by-index (map-invert var-to-index)]
-       (->> (alpha-network-lookup (postwalk-replace var-to-index c) wm needs-beta?)
+       (->> (alpha-network-lookup (with-meta (postwalk-replace var-to-index c) (meta c)) wm needs-beta?)
             (map #(rename-keys (with-meta % (postwalk-replace vars-by-index (meta %))) vars-by-index))))))
 
 (defn cross [left right]
@@ -387,17 +384,15 @@
 (defn binding-vars-for-rule [cs]
   (set (map binding-var (filter binding? cs))))
 
-(defn check-rule
-  ([cs wm] (check-rule cs wm {}))
-  ([cs wm args]
-     (debug "conditions" cs)
-     (let [binding-vars (binding-vars-for-rule cs)]
-       (loop [[c1 & cs] (order-conditions cs)
-              matches (dummy-beta-join-node c1 wm args binding-vars)]
-         (if-not cs
-           matches
-           (let [c2 (first cs)]
-             (recur cs (beta-join-node c1 c2 matches binding-vars wm))))))))
+(defn check-rule [cs wm args]
+  (debug "conditions" cs)
+  (let [binding-vars (binding-vars-for-rule cs)]
+    (loop [[c1 & cs] (order-conditions cs)
+           matches (dummy-beta-join-node c1 wm args binding-vars)]
+      (if-not cs
+        matches
+        (let [c2 (first cs)]
+          (recur cs (beta-join-node c1 c2 matches binding-vars wm)))))))
 
 (defn run-once
   ([] (run-once (working-memory) (productions)))
