@@ -125,36 +125,33 @@
       =>
       (puts x 2 s))
 
-(defn blank []
+(defn blank [x y]
   (s/clear screen)
   (s/redraw screen)
-  (let [[x y] (s/get-size screen)]
-    (doseq [y (range 0 y)]
-      (puts 0 y (apply str (repeat x " "))))))
+  (doseq [y (range 0 y)]
+    (puts 0 y (apply str (repeat x " ")))))
 
 (defn center [total length]
   (- (half total) (half length)))
 
-(defn centered-text [y s]
-  (let [[x _] (s/get-size screen)]
-    (puts (center x (count s)) y s)))
+(defn centered-text [width y s]
+  (puts (center width (count s)) y s))
 
-(defn draw-net []
-  (let [[x y] (s/get-size screen)]
-    (doseq [y (range 0 y 3)]
-      (puts (half x) y " " reverse-video))))
+(defn draw-net [x y]
+  (doseq [y (range 0 y 3)]
+    (puts (half x) y " " reverse-video)))
 
 (defn create-paddle [who x y]
   (update {:player who} merge {:paddle [x y] :score 0}))
 
-(defn header []
-  (centered-text 0 "Welcome to Mímir Pong!")
-  (centered-text 1 "Press Esc to exit"))
+(defn header [width]
+  (centered-text width 0 "Welcome to Mímir Pong!")
+  (centered-text width 1 "Press Esc to exit"))
 
-(defn draw-background []
-  (blank)
-  (draw-net)
-  (header))
+(defn draw-background [x y]
+  (blank x y)
+  (draw-net x y)
+  (header x))
 
 (defn start-game [x y]
   (place-ball-at-center x y)
@@ -164,7 +161,7 @@
 
 (defn resize-screen [x y]
   (update :screen {:screen (mapv dec [x y])})
-  (draw-background)
+  (draw-background x y)
   (start-game x y))
 
 (defn frame []
