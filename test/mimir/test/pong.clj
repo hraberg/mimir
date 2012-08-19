@@ -92,11 +92,6 @@
       =>
       (move-paddle :computer inc))
 
-(rule player-exits-game
-      {:key :escape}
-      =>
-      :exit)
-
 (declare screen)
 
 (def colors {:fg :white :bg :black})
@@ -104,7 +99,13 @@
 
 (defn puts
   ([x y s] (puts x y s colors))
-  ([x y s opts] (s/put-string screen x y s opts)))
+  ([x y s opts] (s/put-string screen x y (str s) opts)))
+
+(rule player-exits-game
+      {:key :escape}
+      =>
+      (s/stop screen)
+      (System/exit 0))
 
 (rule draw-ball
       {:ball [x y]}
@@ -122,7 +123,7 @@
 (rule draw-score
       {:paddle [x y] :score s}
       =>
-      (puts x 2 (str s) (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
+      (puts x 2 s))
 
 (defn blank []
   (s/clear screen)
@@ -166,24 +167,13 @@
   (draw-background)
   (start-game x y))
 
-(defn frame [events]
+(defn frame []
   (s/redraw screen)
   (Thread/sleep 20)
   (update :key {:key (->> (repeatedly #(s/get-key screen))
-                          (take-while identity)
-                          last)})
-  events)
-
-(defn main [screen-type]
-  (def screen (s/get-screen screen-type))
-  (s/add-resize-listener screen resize-screen)
-
-  (s/in-screen screen
-               (->> (run*)
-                    (mapcat frame)
-                    (take-while (is-not :exit))
-                    doall)))
+                          (take-while identity) last)}))
 
 (defn -main [& [screen-type _]]
-  (main (read-string (or screen-type ":text")))
-  nil)
+  (def screen (s/get-screen (read-string (or screen-type ":text"))))
+  (s/add-resize-listener screen resize-screen)
+  (s/in-screen screen (dorun (interleave (run*) (repeatedly frame)))))
