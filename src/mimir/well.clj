@@ -97,7 +97,8 @@
 
 (alter-var-root #'*match-var?* (constantly #(and (symbol? %)
                                                  (not (or (resolve %) (is-var? %)
-                                                           ('#{do fn* let* if} %)
+                                                          ('#{do fn* let* if} %)
+                                                          (re-matches #".*/.*"(str %))
                                                           (re-matches #"\..*"(name %))
                                                           (re-matches #".*\."(name %))
                                                           (re-matches #".*#"(name %)))))))

@@ -146,7 +146,7 @@ For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/m
 
 #### Pattern Matching
 
-Mimir contains an even more experimental [pattern matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj), which can be seen in action on maps in the [Rosencrantz golfers example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/golfers.clj) above. This pattern matcher and it's relationship and influence on Mimir proper is still a bit up in the air - I hope to iron this out over the next week or so. It can be used on it's own:
+Mimir contains an even more experimental [pattern matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj), which can be seen in action on maps in the [Rosencrantz golfers example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/golfers.clj) and in [Pong](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj) above. This pattern matcher and it's relationship and influence on Mimir proper is still a bit up in the air. It can be used on it's own:
 
 ```clojure
 (defm member? [x & y]
@@ -171,8 +171,10 @@ Mimir contains an even more experimental [pattern matcher](https://github.com/hr
          x (* x (factorial (dec x)))))
 ```
 
-It currently performs the match on the var arg by an arbitrary convention, and can use meta data tags to introduce new bindings in a match (this isn't working within a Mimir rule).
+It currently performs the match on the var arg by an arbitrary convention, and can use meta data tags to introduce new bindings in a match.
 A symbol which isn't already bound will also introduce a binding, like in `member?` above, `x` matches the actual `x` argument to the fn, but `xs` creates a new var bound to the rest.
+
+When used inside rules, the bindings currently has to be referenced with a `?` prefix in other conditions, for examples, see [Pong](https://github.com/hraberg/mimir/blob/master/test/mimir/test/pong.clj).
 
 No performance tuning has been made - partly because there are no tests for this beast yet.
 
