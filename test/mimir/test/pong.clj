@@ -14,7 +14,7 @@
       (update :ball [:ball] #(mapv + [dx dy] %)))
 
 (defn place-ball-at-center [width height]
-  (update :ball {:ball [(half width) (rand-int height)]}))
+  (update {:ball =} merge {:ball [(half width) (rand-int height)]}))
 
 (defn score [who]
   (update {:player who} [:score] inc))
@@ -37,22 +37,19 @@
   (update :speed [:speed axis] -))
 
 (rule ball-hits-paddle
-      {:ball [bx by]}
-      {:speed [dx _]}
+      {:ball [bx by] :speed [dx _]}
       {:paddle [(+ ?dx ?bx) #(<= % ?by (+ paddle-size %))]}
       =>
       (bounce (:x axis)))
 
 (rule ball-hits-floor
-      {:ball [_ 0]}
-      {:speed [_ neg?]}
+      {:ball [_ 0] :speed [_ neg?]}
       =>
       (bounce (:y axis)))
 
 (rule ball-hits-ceiling
       {:screen [_ height]}
-      {:ball [_ height]}
-      {:speed [_ pos?]}
+      {:ball [_ height] :speed [_ pos?]}
       =>
       (bounce (:y axis)))
 
@@ -161,7 +158,7 @@
 
 (defn start-game [x y]
   (place-ball-at-center x y)
-  (update :speed {:speed [1 1]})
+  (update :ball merge {:speed [1 1]})
   (create-paddle :human 2 (center y paddle-size))
   (create-paddle :computer (- x 2) (center y paddle-size)))
 
