@@ -132,7 +132,7 @@
     (puts 0 y (apply str (repeat x " ")))))
 
 (defn center [total length]
-  (- (half total) (half length)))
+  (half (- total length)))
 
 (defn centered-text [width y s]
   (puts (center width (count s)) y s))
