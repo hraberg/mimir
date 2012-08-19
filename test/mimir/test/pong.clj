@@ -1,6 +1,5 @@
 (ns mimir.test.pong
-  (:use [mimir.well :only (update rule reset run* is-not)]
-        [mimir.match :only (condm)])
+  (:use [mimir.well :only (update rule reset run* is-not)])
   (:require [lanterna.screen :as s]))
 
 (reset)
@@ -107,6 +106,24 @@
   ([x y s] (puts x y s colors))
   ([x y s opts] (s/put-string screen x y s opts)))
 
+(rule draw-ball
+      {:ball [x y]}
+      =>
+      (s/move-cursor screen x y))
+
+(rule draw-paddle
+      {:paddle [x y]}
+      =>
+      (doseq [y (range y (+ y paddle-size))]
+        (puts  x y " " reverse-video))
+      (puts x (dec y) " ")
+      (puts x (+ y paddle-size) " "))
+
+(rule draw-score
+      {:paddle [x y] :score s}
+      =>
+      (puts x 2 (str s) (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
+
 (defn blank []
   (s/clear screen)
   (s/redraw screen)
@@ -126,23 +143,8 @@
     (doseq [y (range 0 y 3)]
       (puts (half x) y " " reverse-video))))
 
-(defn draw-score [x y score]
-  (puts x 2 (str score)
-        (if (<= y 2 (+ y paddle-size)) reverse-video colors)))
-
-(defn draw-paddle [x y]
-  (doseq [y (range y (+ y paddle-size))]
-    (puts  x y " " reverse-video))
-  (puts x (dec y) " ")
-  (puts x (+ y paddle-size) " "))
-
 (defn create-paddle [who x y]
-  (update {:player who} merge {:paddle [x y] :score 0})
-  (draw-paddle x y)
-  (draw-score x y 0))
-
-(defn draw-ball [x y]
-  (s/move-cursor screen x y))
+  (update {:player who} merge {:paddle [x y] :score 0}))
 
 (defn header []
   (centered-text 0 "Welcome to Mímir Pong!")
@@ -172,12 +174,6 @@
                           last)})
   events)
 
-(defn handle-event [e]
-  (condm e
-         {:ball [px py]} (draw-ball px py)
-         {:paddle [px py] :score s} (do (draw-paddle px py)
-                                        (draw-score px py s))))
-
 (defn main [screen-type]
   (def screen (s/get-screen screen-type))
   (s/add-resize-listener screen resize-screen)
@@ -186,7 +182,6 @@
                (->> (run*)
                     (mapcat frame)
                     (take-while (is-not :exit))
-                    (map handle-event)
                     doall)))
 
 (defn -main [& [screen-type _]]
