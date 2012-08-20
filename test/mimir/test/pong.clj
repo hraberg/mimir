@@ -123,7 +123,7 @@
       (puts x (dec y) " ")
       (puts x (+ y paddle-size) " "))
 
-(rule draw-score
+(rule draw-score :salience 1
       {:paddle [x y] :score s}
       =>
       (puts x 2 s))

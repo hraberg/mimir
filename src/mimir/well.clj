@@ -118,6 +118,7 @@
 
 (defmacro rule [name & body]
   (let [body (if ('#{=>} (first body)) (cons (list (gensym "?") '<- true) body) body)
+        [body salience] (if (#{:salience} (first body)) [(drop 2 body) (second body)] [body 0])
         [lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
         expanded-lhs (->> (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
@@ -139,7 +140,7 @@
        (when-not (= '~lhs '~expanded-lhs)
          (debug "expanded" '~lhs)
          (debug "    into" '~expanded-lhs))
-       (alter-meta! f# merge {:lhs '~lhs :rhs '~rhs :doc ~(apply str doc)})
+       (alter-meta! f# merge {:lhs '~lhs :rhs '~rhs :doc ~(apply str doc) :salience ~salience})
        (swap! *net* update-in [:productions] conj f#)
        f#)))
 
@@ -329,7 +330,7 @@
      (fold-into vector (permutations* n coll))))
 
 (defn predicate-invoker [args join-on binding-vars]
-  (with-cache predicate-invokers [args join-on]
+  (with-cache predicate-invokers [args join-on binding-vars]
     (eval `(fn [pred# {:syms [~@(filter join-on args)] :as matches#}]
              (fn [[~@(remove join-on args)]]
                (pred# ~@args #(vals (dissoc (purge-match-vars matches#) '~@binding-vars))))))))
@@ -408,10 +409,13 @@
         (let [c2 (first cs)]
           (recur cs (beta-join-node c1 c2 matches binding-vars wm)))))))
 
+(defn salience [p]
+  (or (-> p meta :salience) 0))
+
 (defn run-once
   ([] (run-once (working-memory) (productions)))
   ([wm productions]
-     (->> productions
+     (->> productions (sort-by salience)
           (mapcat #(% wm {}))
           doall)))
 
@@ -499,8 +503,8 @@
 (defn is-not [x]
   (partial not= x))
 
-(defn constrained-match [m x]
-  (some #(match % m) x))
+(defmacro constrained-match [m x]
+  `(some #(match % ~m) ~x))
 
 (defmacro constrain
   ([m] `(constraint (constrained-match ~m (~'*matches*))))
