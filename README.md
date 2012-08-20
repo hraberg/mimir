@@ -84,7 +84,7 @@ The test macro `match?` uses `mimir.well/run` under the hood, which keeps runnin
 
 Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))` when calling a rule directly. In contrast, all results are realized by `mimir.well/run` each iteration to figure out if another run is needed.
 
-And as [Martin](http://martinsprogrammingblog.blogspot.co.uk/) pointed out, this example is "at least two orders of magnitudes" too slow!
+And as [Martin](http://martinsprogrammingblog.blogspot.co.uk/) pointed out, this example is "at least two orders of magnitude" too slow!
 
 ```clojure
   ; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
