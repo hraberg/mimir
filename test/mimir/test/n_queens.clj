@@ -24,13 +24,13 @@
 
   (rule n-queens
 
-        ?queens <- (take-unique *n*)
-        (different #{file rank} ?queens)
-        (not-same diagonal? ?queens)
+        (take-unique *n*)
+        (different #{file rank})
+        (not-same diagonal?)
 
         =>
 
-        (map file ?queens))
+        (map file *matches*))
 
   (time (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
                 [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])))

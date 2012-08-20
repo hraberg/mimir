@@ -65,24 +65,26 @@ The test macro `match?` uses `mimir.well/run` under the hood, which keeps runnin
 
   (rule n-queens
 
-        ?queens <- (take-unique *n*)
-        (different #{file rank} ?queens)
-        (not-same diagonal? ?queens)
+        (take-unique *n*)
+        (different #{file rank})
+        (not-same diagonal?)
 
         =>
 
-        (map file ?queens))
+        (map file *matches*))
 
   ; n = 5
   (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
           [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])
 ```
 
-[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/n_queens.clj) demonstrates bindings via `<-` to introduce a new variable `?queens` not part of the working memory itself, but instead is a group of `*n*` queens that are selected by the `take-unique` macro. This expands into several conditions to ensure that the set of working memory elements picked are unique regardless of variable "position". This is done using `compare` behind the scenes in the expanded conditions.
+[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/n_queens.clj) demonstrates a group of `*n*` queens that are selected by the `take-unique` macro. This expands into several conditions to ensure that the set of working memory elements picked are unique regardless of variable "position". This is done using `compare` behind the scenes in the expanded conditions.
 
-`different` is a macro expanding into a `distinct?` call for each fn. `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of `?queens`. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored.
+`different` is a macro expanding into a `distinct?` call for each fn. `not-same` is a binary predicate which ensures `diagonal?` isn't `true` for any combinations of queens. This could be expanded into several conditions, but isn't at the moment; there's a balance between brute force search and the overhead of doing more joins - still to be explored.
 
 Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))` when calling a rule directly. In contrast, all results are realized by `mimir.well/run` each iteration to figure out if another run is needed.
+
+And as [Martin](http://martinsprogrammingblog.blogspot.co.uk/) pointed out, this example is "at least two orders of magnitudes" too slow!
 
 ```clojure
   ; Rosencrantz' problem from chapter 1, "Rules to the Rescue" in Jess in Action:
@@ -92,30 +94,27 @@ Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))
     (fact {:name name :position position :pants-color pants-color}))
 
   (rule find-solution
-        ?g1 {:name "Fred"}
+        {:name "Fred"
+         :position fred}
 
-        ?g  {:position (-> ?g1 :position inc)
-             :pants-color :blue}
+        {:name "Joe"
+         :position 2}
 
-        ?g2 {:name "Joe"
-             :position 2}
+        {:name "Bob"
+         :pants-color :plaid}
 
-        ?g3 {:name "Bob"
-             :pants-color :plaid}
+        {:name "Tom"
+         :position (not-in #{1 4})
+         :pants-color (is-not :orange)}
 
-        ?g4 {:name "Tom"
-             :position (not-in #{1 4})
-             :pants-color (is-not :orange)}
+        (constrain {:position (inc ?fred)
+                    :pants-color :blue})
 
-        ?golfers <- #{?g1 ?g2 ?g3 ?g4}
-
-        (different #{:position :pants-color} ?golfers)
-
-        (contains? ?golfers ?g)
+        (different #{:position :pants-color})
 
         =>
 
-        (set ?golfers))
+        (set *matches*))
 
   (match? #{{:name "Fred", :position 1, :pants-color :orange}
             {:name "Joe", :position 2, :pants-color :blue}
@@ -123,7 +122,7 @@ Evaluation of `mimir.well/run-once` is lazy, so you can do: `(take 1 (n-queens))
             {:name "Tom", :position 3, :pants-color :red}})
 ```
 
-[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/golfers.clj) is demonstrating the pattern matcher (see below) operating on normal Clojure maps. `not-in` and `is-not` are predicates for the values. Keys not specified in the match are ignored.
+[This example](https://github.com/hraberg/mimir/blob/master/test/mimir/test/golfers.clj) is demonstrating the pattern matcher (see below) operating on normal Clojure maps. `not-in` and `is-not` are predicates for the values. Keys not specified in the match are ignored. The maps introduces new (anonymous) variables, matching the working memory, while the `constrain` and `different` macros works on the current set of matches, not the working memory itself.
 
 For more, see [`mimir.test`](https://github.com/hraberg/mimir/tree/master/test/mimir/test).
 

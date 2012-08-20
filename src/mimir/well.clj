@@ -20,6 +20,7 @@
 
 (def ^:dynamic *lazy* false)
 
+(defn dbg [x] (println x) x)
 
 (doseq [k (keys @*net*)]
   (eval `(defn ~(symbol (name k)) [] (~k @*net*))))
@@ -31,6 +32,9 @@
   (when-let [^String s (and (symbol? x) (name x))]
     (or (.startsWith s "?")
         (re-matches #"[A-Z]+" s))))
+
+(defn var-sym [x]
+  (symbol (str "?" x)))
 
 (alter-var-root #'*match-var?* (constantly (every-pred *match-var?* (complement is-var?))))
 
@@ -98,13 +102,28 @@
             (when more
               (str "... [total: " (count x) "]"))))))
 
+(defn binding? [c]
+  (and (sequential? c)
+       (= 'mimir.well/bind (first c))))
+
+(defn binding-var [c]
+  (when (binding? c) (second c)))
+
+(defn binding-vars-for-rule [cs]
+  (set (map binding-var (filter binding? cs))))
+
+(defn purge-match-vars [xs]
+  (let [match-vars (filter (complement is-var?) (keys xs))]
+    (apply dissoc xs (concat (map var-sym match-vars) match-vars))))
+
 (defmacro rule [name & body]
   (let [body (if ('#{=>} (first body)) (cons (list (gensym "?") '<- true) body) body)
         [lhs _ rhs] (partition-by '#{=>} body)
         [doc lhs] (split-with string? lhs)
         expanded-lhs (->> (macroexpand-conditions (parser lhs expand-lhs expand-lhs))
                           (map #(with-meta % {:ns *ns*})))
-        rhs (parser rhs identity expand-rhs false)]
+        rhs (parser rhs identity expand-rhs false)
+        binding-vars (binding-vars-for-rule expanded-lhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
                 ([~'args] (~name (working-memory) ~'args))
@@ -112,7 +131,7 @@
                    (debug "rule" '~name '~*ns*)
                    (for [vars# (check-rule '~(vec expanded-lhs) ~'wm ~'args)
                          :let [{:syms ~(concat (all-vars lhs) (vars rhs))} vars#
-                               ~'*vars* (map val (sort-by key vars#))]]
+                               ~'*matches* (map val (sort-by key (dissoc (purge-match-vars vars#) '~@binding-vars)))]]
                      (do
                        (debug "rhs" vars#)
                        ~@rhs))))]
@@ -136,9 +155,6 @@
 (defn join-on [x y]
   (let [vars-and-match-vars #(set (concat (remove '#{_} (all-vars %)) (vars %)))]
     (intersection (vars-and-match-vars x) (vars-and-match-vars y))))
-
-(defn var-sym [x]
-  (symbol (str "?" x)))
 
 (defn var-to-index [c]
   (loop [[v & vs] (vars c)
@@ -169,7 +185,7 @@
 (defn predicate-for [c]
   (with-cache predicate c
     (let [args (ordered-vars c)
-          src `(fn ~args ~c)
+          src `(fn [~@args & [~'*matches*]] ~c)
           meta (meta c)]
       (debug " compiling" c)
       (binding [*ns* (or (:ns meta) *ns*)]
@@ -210,21 +226,20 @@
          (complement symbol?) ifn?)))))
 
 (defn bind [to expr] expr)
+(defn constraint [expr] expr)
 
-(defn binding? [c]
+(defn constraint? [c]
   (and (sequential? c)
-       (= 'mimir.well/bind (first c))))
-
-(defn binding-var [c]
-  (when (binding? c) (second c)))
+       (= 'mimir.well/constraint (first c))))
 
 (defn multi-var-predicate? [c]
-  (and (predicate? c) (> (count (vars c)) 1)))
+  (and (predicate? c) (or (> (count (vars c)) 1) (constraint? c))))
 
 (defn multi-var-predicate-placeholder [c]
   (let [pred (predicate-for c)]
     (debug " more than one argument, needs beta network")
-    (with-meta (zipmap (-> pred meta :args) (repeat pred)) (meta pred))))
+    (with-meta (zipmap (-> pred meta :args) (repeat pred))
+      (assoc (meta pred) :pred pred))))
 
 (defn match-wme [c wme]
   (if (predicate? c)
@@ -290,7 +305,7 @@
      (let [var-to-index (var-to-index c)
            vars-by-index (map-invert var-to-index)]
        (->> (alpha-network-lookup (with-meta (postwalk-replace var-to-index c) (meta c)) wm needs-beta?)
-            (map #(rename-keys (with-meta % (postwalk-replace vars-by-index (meta %))) vars-by-index))))))
+            (map #(rename-keys (with-meta % (merge (meta %) (postwalk-replace vars-by-index (meta %)))) vars-by-index))))))
 
 (defn cross [left right]
   (debug " nothing to join on, treating as or")
@@ -300,7 +315,7 @@
 
 (defn multi-var-predicate-node? [am]
   (and (seq? am) (= 1 (count am))
-       (fn? (-> am first first val))))
+       (fn? (-> am first meta :pred))))
 
 (defn permutations* [n coll]
   (if (zero? n)
@@ -313,21 +328,21 @@
   ([n coll]
      (fold-into vector (permutations* n coll))))
 
-(defn predicate-invoker [args join-on]
+(defn predicate-invoker [args join-on binding-vars]
   (with-cache predicate-invokers [args join-on]
-    (eval `(fn [pred# {:syms [~@(filter join-on args)]}]
+    (eval `(fn [pred# {:syms [~@(filter join-on args)] :as matches#}]
              (fn [[~@(remove join-on args)]]
-               (pred# ~@args))))))
+               (pred# ~@args #(vals (dissoc (purge-match-vars matches#) '~@binding-vars))))))))
 
-(defn deal-with-multi-var-predicates [c1-am c2-am join-on c2]
-  (let [pred (-> c2-am first first val)
+(defn deal-with-multi-var-predicates [c1-am c2-am join-on c2 binding-vars]
+  (let [pred (-> c2-am first meta :pred)
         args (-> c2-am first meta :args)
         bind-var (binding-var c2)
-        matcher (matcher? c2)
+        matcher ((some-fn matcher? constraint? c2))
         join-on (if bind-var (conj join-on bind-var) join-on)
         needed-args (vec (remove join-on args))
         permutated-wm (permutations (count needed-args) (working-memory))
-        invoker (predicate-invoker args join-on)
+        invoker (predicate-invoker args join-on binding-vars)
         [map filter] (if *lazy*  [map filter] [r/map r/filter])
         join-fn (fn [m]
                   (let [invoker (invoker pred m)]
@@ -369,7 +384,7 @@
         (let [result (cond
                       (multi-var-predicate-node? c2-am) (deal-with-multi-var-predicates
                                                           c1-am c2-am
-                                                          join-on c2)
+                                                          join-on c2 binding-vars)
                       (empty? join-on) (cross c1-am c2-am)
                       :else (join c1-am c2-am))]
           (debug "result" (ellipsis result))
@@ -379,10 +394,9 @@
   (beta-join-node [] c #{args} binding-vars wm))
 
 (defn order-conditions [cs]
-  (mapcat #(sort-by (comp count vars) %) (partition-by binding? cs)))
-
-(defn binding-vars-for-rule [cs]
-  (set (map binding-var (filter binding? cs))))
+  (mapcat #(concat (sort-by (comp count vars) (remove constraint? %))
+                   (filter constraint? %))
+          (partition-by binding? cs)))
 
 (defn check-rule [cs wm args]
   (debug "conditions" cs)
@@ -435,23 +449,30 @@
   ([id rel attr]
      `(retract ~(list id rel attr))))
 
+(defn different* [f xs]
+  (apply distinct? (map f (maybe-singleton-coll xs))))
+
+(defmacro different
+  ([f] `(different ~f (~'*matches*)))
+  ([f xs]
+     (if (coll? f)
+       (map #(do `(constraint (different ~% ~xs))) f)
+       `(constraint (different* ~f ~xs)))))
+
 (defn all-different [& xs]
   (apply distinct? xs))
-
-(defmacro different [f xs]
-  (if (coll? f)
-    (map #(list 'different % xs) f)
-    `(apply distinct? (map ~f (maybe-singleton-coll ~xs)))))
 
 (defn same*
   ([test pred xs]
      (test (for [x xs y (remove #{x} xs)]
              (pred x y)))))
 
-(defmacro not-same [pred xs]
-  (if (coll? pred)
-    (map #(list 'not-same % xs) pred)
-    `(same* (partial not-any? true?) ~pred (maybe-singleton-coll ~xs))))
+(defmacro not-same
+  ([pred] `(not-same ~pred (~'*matches*)))
+  ([pred xs]
+     (if (coll? pred)
+       (map #(do `(constraint (not-same ~% ~xs))) pred)
+       `(constraint (same* (partial not-any? true?) ~pred (maybe-singleton-coll ~xs))))))
 
 (defn same [pred & xs]
   (if (coll? pred)
@@ -477,6 +498,13 @@
 
 (defn is-not [x]
   (partial not= x))
+
+(defn constrained-match [m x]
+  (some #(match % m) x))
+
+(defmacro constrain
+  ([m] `(constraint (constrained-match ~m (~'*matches*))))
+  ([x m]`(constraint (constrained-match ~m ~x))))
 
 (defn version []
   (-> "project.clj" clojure.java.io/resource
