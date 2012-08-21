@@ -11,8 +11,7 @@
     (distinct (persistent! acc))))
 
 (defn singleton-coll? [x]
-  (and (= 1 (count x))
-       (coll? (first x))))
+  (and (coll? (first x)) (not (next x))))
 
 (defn maybe-singleton-coll [x]
   (if (singleton-coll? x) (first x) x))

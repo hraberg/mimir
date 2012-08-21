@@ -1,6 +1,7 @@
 (ns mimir.test.n-queens
-  (:use [mimir.well :only (rule fact take-unique not-same different gen-vars permutations)]
+  (:use [mimir.well :only (rule fact take-unique take-distinct not-same all-different different)]
         [mimir.test.common]
+        [mimir.match :only (match match*)]
         [clojure.test]))
 
 (with-reset-fixture)
@@ -35,13 +36,16 @@
   (time (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
                 [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])))
 
-(defn fast-queens [n]
-  (->> (permutations (range 1 (inc n)))
-       (filter #(apply distinct? %))
-       (map vec)
-       (filter
-        #(->> (for [x (range 0 n) y (range 0 n)
-                    :when (not= x y)]
-                (= (Math/abs (- (- x y)))
-                   (Math/abs (- (% x) (% y)))))
-              (not-any? true?)))))
+(deftest n-queens-test-2
+  (integers 1 *n*)
+
+  (rule n-queens
+        (take-distinct *n*)
+        (all-different (map-indexed + *matches*))
+        (all-different (map-indexed - *matches*))
+        (all-different)
+        =>
+        *matches*)
+
+  (time (match? [4 2 5 3 1] [3 5 2 4 1] [5 3 1 4 2] [4 1 3 5 2] [5 2 4 1 3]
+                [1 4 2 5 3] [2 5 3 1 4] [1 3 5 2 4] [3 1 4 2 5] [2 4 1 3 5])))

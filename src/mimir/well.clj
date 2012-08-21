@@ -18,8 +18,6 @@
 
 (def ^:dynamic *net* (atom (create-net)))
 
-(def ^:dynamic *lazy* false)
-
 (defn dbg [x] (println x) x)
 
 (doseq [k (keys @*net*)]
@@ -113,7 +111,7 @@
   (set (map binding-var (filter binding? cs))))
 
 (defn purge-match-vars [xs]
-  (let [match-vars (filter (complement is-var?) (keys xs))]
+  (let [match-vars (remove is-var? (keys xs))]
     (apply dissoc xs (concat (map var-sym match-vars) match-vars))))
 
 (defmacro rule [name & body]
@@ -127,11 +125,11 @@
         binding-vars (binding-vars-for-rule expanded-lhs)]
     `(let [f# (defn ~name
                 ([] (~name {}))
-                ([~'args] (~name (working-memory) ~'args))
+                ([{:syms ~(vec (vars lhs)) :as ~'args}] (~name (working-memory) ~'args))
                 ([~'wm ~'args]
                    (debug "rule" '~name '~*ns*)
                    (for [vars# (check-rule '~(vec expanded-lhs) ~'wm ~'args)
-                         :let [{:syms ~(concat (all-vars lhs) (vars rhs))} vars#
+                         :let [{:syms ~(concat (all-vars lhs) (vars lhs))} vars#
                                ~'*matches* (map val (sort-by key (dissoc (purge-match-vars vars#) '~@binding-vars)))]]
                      (do
                        (debug "rhs" vars#)
@@ -183,6 +181,9 @@
     `(let [real-locals# ~locals]
        (postwalk (tree-eval-walk real-locals#) '~tree))))
 
+(defn uses-*matches*? [c]
+  (boolean (some '#{*matches*} (flatten c))))
+
 (defn predicate-for [c]
   (with-cache predicate c
     (let [args (ordered-vars c)
@@ -190,7 +191,7 @@
           meta (meta c)]
       (debug " compiling" c)
       (binding [*ns* (or (:ns meta) *ns*)]
-        (with-meta (eval src) (merge meta {:src c :args args}))))))
+        (with-meta (eval src) (merge meta {:src c :args args :uses-*matches* (uses-*matches*? c)}))))))
 
 (defn alias-match-vars [m]
   (merge m
@@ -329,51 +330,46 @@
   ([n coll]
      (fold-into vector (permutations* n coll))))
 
-(defn predicate-invoker [args join-on binding-vars]
-  (with-cache predicate-invokers [args join-on binding-vars]
+(defn predicate-invoker [args join-on binding-vars uses-*matches*]
+  (with-cache predicate-invokers [args join-on binding-vars uses-*matches*]
     (eval `(fn [pred# {:syms [~@(filter join-on args)] :as matches#}]
-             (fn [[~@(remove join-on args)]]
-               (pred# ~@args #(vals (dissoc (purge-match-vars matches#) '~@binding-vars))))))))
+             (let [matches# (when ~uses-*matches*
+                              (vals (dissoc (purge-match-vars matches#) '~@binding-vars)))]
+               (fn [[~@(remove join-on args)]]
+                 (pred# ~@args matches#)))))))
 
 (defn deal-with-multi-var-predicates [c1-am c2-am join-on c2 binding-vars]
   (let [pred (-> c2-am first meta :pred)
         args (-> c2-am first meta :args)
         bind-var (binding-var c2)
         matcher ((some-fn matcher? constraint? c2))
+        uses-*matches* (-> pred meta :uses-*matches*)
         join-on (if bind-var (conj join-on bind-var) join-on)
         needed-args (vec (remove join-on args))
         permutated-wm (permutations (count needed-args) (working-memory))
-        invoker (predicate-invoker args join-on binding-vars)
-        [map filter] (if *lazy*  [map filter] [r/map r/filter])
+        invoker (predicate-invoker args join-on binding-vars uses-*matches*)
         join-fn (fn [m]
                   (let [invoker (invoker pred m)]
                     (->> permutated-wm
-                         (filter #(try
-                                    (invoker %)
+                         (r/map (fn [wm]
+                                  (try
+                                    (when-let [r (invoker wm)]
+                                      (merge m
+                                             (zipmap needed-args wm)
+                                             (when matcher
+                                               (alias-match-vars r))
+                                             (when bind-var
+                                               {bind-var r})))
                                     (catch RuntimeException e
-                                      (debug " threw non fatal" e))))
-                         (map #(merge m
-                                      (zipmap needed-args %)
-                                      (when matcher
-                                        (try
-                                          (alias-match-vars (invoker %))
-                                          (catch RuntimeException e
-                                            (debug " matcher threw non fatal" e))))
-                                      (when bind-var
-                                        (try
-                                          (when-let [bind-val (invoker %)]
-                                            {bind-var bind-val})
-                                          (catch RuntimeException e
-                                            (debug " binding threw non fatal" e)))))))))]
+                                      (debug " threw non fatal" e)))))
+                         (r/remove nil?))))]
     (debug " multi-var-predicate")
     (debug " args" args)
     (debug " known args" join-on "- need to find" needed-args)
     (debug " permutations of wm" (ellipsis permutated-wm))
-    (if *lazy*
-      (mapcat join-fn c1-am)
-      (->> c1-am
-           (r/mapcat join-fn)
-           (fold-into vector)))))
+    (->> c1-am
+         (r/mapcat join-fn)
+         (fold-into vector))))
 
 (defn beta-join-node [c1 c2 c1-am binding-vars wm]
   (let [c2-am (alpha-memory c2 wm (some binding-vars (vars c2)))]
@@ -415,9 +411,9 @@
 (defn run-once
   ([] (run-once (working-memory) (productions)))
   ([wm productions]
-     (->> productions (sort-by salience)
-          (mapcat #(% wm {}))
-          doall)))
+     (->> productions (sort-by salience) vec
+          (r/mapcat #(% wm {}))
+          (fold-into vector))))
 
 (defn run*
   ([] (repeatedly run-once)))
@@ -457,14 +453,16 @@
   (apply distinct? (map f (maybe-singleton-coll xs))))
 
 (defmacro different
-  ([f] `(different ~f (~'*matches*)))
+  ([f] `(different ~f ~'*matches*))
   ([f xs]
-     (if (coll? f)
+     (if ((some-fn set? vector?) f)
        (map #(do `(constraint (different ~% ~xs))) f)
        `(constraint (different* ~f ~xs)))))
 
-(defn all-different [& xs]
-  (apply distinct? xs))
+(defmacro all-different
+  ([] `(different identity))
+  ([& xs]
+     `(different identity ~(vec xs))))
 
 (defn same*
   ([test pred xs]
@@ -472,18 +470,19 @@
              (pred x y)))))
 
 (defmacro not-same
-  ([pred] `(not-same ~pred (~'*matches*)))
+  ([pred] `(not-same ~pred ~'*matches*))
   ([pred xs]
-     (if (coll? pred)
+     (if ((some-fn set? vector?) pred)
        (map #(do `(constraint (not-same ~% ~xs))) pred)
        `(constraint (same* (partial not-any? true?) ~pred (maybe-singleton-coll ~xs))))))
 
 (defn same [pred & xs]
-  (if (coll? pred)
+  (if ((some-fn set? vector?) pred)
     (map #(list 'same % xs) pred)
     `(same* (partial every? true?) ~pred (maybe-singleton-coll ~xs))))
 
 (defmacro gen-vars
+  ([n] `(gen-vars ~n ~(gensym)))
   ([n prefix]
      `(vec (map #(var-sym (str '~prefix "-" %))
                 (range 1 (inc ~n))))))
@@ -495,7 +494,10 @@
    (list (list 'identity xs))))
 
 (defmacro take-unique [n]
-  `(unique ~(gen-vars (eval n) (gensym))))
+  `(unique ~(gen-vars (eval n))))
+
+(defmacro take-distinct [n]
+  `(identity ~(gen-vars (eval n))))
 
 (defn not-in [set]
   (complement set))
@@ -507,7 +509,7 @@
   `(some #(match % ~m) ~x))
 
 (defmacro constrain
-  ([m] `(constraint (constrained-match ~m (~'*matches*))))
+  ([m] `(constraint (constrained-match ~m ~'*matches*)))
   ([x m]`(constraint (constrained-match ~m ~x))))
 
 (defn version []

@@ -17,8 +17,9 @@
 (defn with-reset-fixture []
   (use-fixtures :each (fn [f] (reset) (f) (reset))))
 
-(defn integers []
-  (->> (range 10) (map fact) doall))
+(defn integers
+  ([] (integers 0 9))
+  ([start end]  (->> (range start (inc end)) (map fact) doall)))
 
 (defmacro base [base & expr]
   (let [[x [op] y [test] z] (partition-by '#{+ =} expr)
