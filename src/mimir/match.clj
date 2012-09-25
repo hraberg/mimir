@@ -2,7 +2,8 @@
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy enabled?)]
         [clojure.walk :only (postwalk prewalk walk postwalk-replace)])
-  (:import [java.util.regex Pattern]))
+  (:import [java.util.regex Pattern]
+           [clojure.lang IPersistentMap IPersistentSet Sequential Symbol Fn Keyword]))
 
 (defn filter-walk
   [pred coll]
@@ -69,58 +70,91 @@
     (postwalk regex-walk x)
     (distinct (persistent! vars))))
 
-(defn match*
-  ([x pattern] (match* x pattern {}))
-  ([x pattern acc]
-     (condp some [pattern]
-       *match-var?* (assoc acc pattern x)
-       (partial
-        instance?
-        Pattern) (let [re (re-matcher pattern (str x))
-                       groups (regex-vars pattern)]
-                   (when (.matches re)
-                     (reduce #(assoc % (*var-symbol* %2)
-                                     (.group re (str %2)))
-                             acc groups)))
-        (partial
-         instance?
-         Class) (when (instance? pattern x)
-                  acc)
-         fn? (when (try (pattern x) (catch RuntimeException _))
-               (bind-vars x pattern acc))
-         keyword? (when (or (contains? x pattern) (= x pattern))
-                     (bind-vars x pattern acc))
-         set? (loop [[k & ks] (seq pattern)
-                     acc acc]
-                (when k
-                  (if-let [acc (match* x k acc)]
-                    (bind-vars x pattern acc)
-                    (recur ks acc))))
-         map? (when (map? x)
-                (loop [[k & ks] (keys pattern)
-                       acc acc]
-                  (if-not k
-                    (bind-vars x pattern acc)
-                    (when (contains? x k)
-                      (when-let [acc (match* (x k) (pattern k) acc)]
-                        (recur ks (bind-vars (x k) (pattern k) acc)))))))
-         sequential? (when (sequential? x)
-                       (loop [[p & ps] pattern
-                              [y & ys] x
-                              acc acc]
-                         (if-not p
-                           (bind-vars x pattern acc)
-                           (if (= '& p)
-                             (let [rst (when y (vec (cons y ys)))]
-                               (when-let [acc (if (*match-var?* (first ps))
-                                                acc
-                                                (match* rst (repeat (count rst)
-                                                                    (first ps)) acc))]
-                                 (bind-vars rst (first ps) acc)))
-                             (when-let [acc (match* y p acc)]
-                               (recur ps ys (bind-vars y p acc)))))))
-         #{x} acc
-         nil)))
+(defprotocol MatchAny (match-any [this x acc]))
+(defprotocol MatchEql (match-= [this x acc]))
+(defprotocol MatchMap (match-map [this x acc]))
+(defprotocol MatchSeq (match-seq [this x acc]))
+
+(extend-type Object
+  MatchAny (match-any [this x acc] (match-= this x acc))
+  MatchEql (match-= [this x acc] (when (= this x) acc))
+  MatchMap (match-map [this x acc])
+  MatchSeq (match-seq [this x acc]))
+
+(extend-type nil
+  MatchAny (match-any [this x acc] (match-= this x acc))
+  MatchEql (match-= [this x acc] (when (nil? x) acc))
+  MatchMap (match-map [this x acc])
+  MatchSeq (match-seq [this x acc]))
+
+(extend-type IPersistentMap
+  MatchAny
+  (match-any [this x acc] (match-map x this acc))
+  MatchMap
+  (match-map [x this acc] (loop [[k & ks] (keys this)
+                                 acc acc]
+                            (if-not k
+                              (bind-vars x this acc)
+                              (when (contains? x k)
+                                (when-let [acc (match-any (this k) (x k) acc)]
+                                  (recur ks (bind-vars (x k) (this k) acc))))))))
+
+(extend-type Symbol
+  MatchAny
+  (match-any [this x acc] (if (*match-var?* this)
+                            (assoc acc this x)
+                            (match-= x this acc))))
+
+(extend-type Pattern
+  MatchAny
+  (match-any [this x acc] (let [re (re-matcher this (str x))
+                                groups (regex-vars this)]
+                            (when (.matches re)
+                              (reduce #(assoc % (*var-symbol* %2)
+                                              (.group re (str %2)))
+                                      acc groups)))))
+
+(extend-type Class
+  MatchAny
+  (match-any [this x acc] (when (instance? this x) acc)))
+
+(extend-type Fn
+  MatchAny
+  (match-any [this x acc] (when (try (this x) (catch RuntimeException _))
+                            (bind-vars x this acc))))
+
+(extend-type Keyword
+  MatchAny
+  (match-any [this x acc] (when (or (contains? x this) (= x this))
+                            (bind-vars x this acc))))
+
+(extend-type IPersistentSet
+  MatchAny
+  (match-any [this x acc] (loop [[k & ks] (seq this)
+                                 acc acc]
+                            (when k
+                              (if-let [acc (match-any k x acc)]
+                                (bind-vars x this acc)
+                                (recur ks acc))))))
+
+(extend-type Sequential
+  MatchAny
+  (match-any [this x acc] (match-seq x this acc))
+  MatchSeq
+  (match-seq [x this acc] (loop [[p & ps] this
+                                 [y & ys] x
+                                 acc acc]
+                            (if-not p
+                              (bind-vars x this acc)
+                              (if (= '& p)
+                                (let [rst (when y (vec (cons y ys)))]
+                                  (when-let [acc (if (*match-var?* (first ps))
+                                                   acc
+                                                   (match-seq rst (repeat (count rst)
+                                                                          (first ps)) acc))]
+                                    (bind-vars rst (first ps) acc)))
+                                (when-let [acc (match-any p y acc)]
+                                  (recur ps ys (bind-vars y p acc))))))))
 
 (defn truth [& _] true)
 
@@ -136,6 +170,8 @@
   (->> (preserve-meta (walk identity meta-walk m) (meta m))
        (postwalk-replace {'_ truth :else truth})
        (unquote-vars-in-scope &env)))
+
+(defn match* [x pattern] (match-any pattern x {}))
 
 (defmacro match [x m]
   `(match* ~x ~(prepare-matcher m &env)))
