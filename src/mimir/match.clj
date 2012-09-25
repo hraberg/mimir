@@ -71,19 +71,16 @@
     (distinct (persistent! vars))))
 
 (defprotocol MatchAny (match-any [this x acc]))
-(defprotocol MatchEql (match-= [this x acc]))
 (defprotocol MatchMap (match-map [this x acc]))
 (defprotocol MatchSeq (match-seq [this x acc]))
 
 (extend-type Object
-  MatchAny (match-any [this x acc] (match-= this x acc))
-  MatchEql (match-= [this x acc] (when (= this x) acc))
+  MatchAny (match-any [this x acc] (when (= this x) acc))
   MatchMap (match-map [this x acc])
   MatchSeq (match-seq [this x acc]))
 
 (extend-type nil
-  MatchAny (match-any [this x acc] (match-= this x acc))
-  MatchEql (match-= [this x acc] (when (nil? x) acc))
+  MatchAny (match-any [this x acc] (when (nil? x) acc))
   MatchMap (match-map [this x acc])
   MatchSeq (match-seq [this x acc]))
 
@@ -103,7 +100,7 @@
   MatchAny
   (match-any [this x acc] (if (*match-var?* this)
                             (assoc acc this x)
-                            (match-= x this acc))))
+                            (when (= this x) acc))))
 
 (extend-type Pattern
   MatchAny
