@@ -58,7 +58,7 @@
 (defn bound-vars [x]
   (let [vars (transient [])
         var-walk (fn this [form]
-                   (when-let [v (-> form meta :tag)]
+                   (let [v (or (-> form meta :tag) form)]
                      (when (*match-var?* v)
                        (conj! vars v)))
                    form)]
@@ -176,9 +176,8 @@
   `(match* ~x ~(prepare-matcher m &env)))
 
 (defn all-vars [lhs]
-  (vec (concat (filter-walk *match-var?* lhs)
-               (bound-vars lhs)
-               (map *var-symbol* (regex-vars lhs)))))
+  (concat (bound-vars lhs)
+          (map *var-symbol* (regex-vars lhs))))
 
 (defmacro condm* [match-var [lhs rhs & ms]]
   `(if-let [{:syms ~(remove (set (keys &env)) (all-vars lhs))}

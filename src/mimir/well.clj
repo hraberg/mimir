@@ -129,7 +129,7 @@
                 ([~'wm ~'args]
                    (debug "rule" '~name '~*ns*)
                    (for [vars# (check-rule '~(vec expanded-lhs) ~'wm ~'args)
-                         :let [{:syms ~(concat (all-vars lhs) (vars lhs))} vars#
+                         :let [{:syms ~(vec (concat (all-vars lhs) (vars lhs)))} vars#
                                ~'*matches* (map val (sort-by key (dissoc (purge-match-vars vars#) '~@binding-vars)))]]
                      (do
                        (debug "rhs" vars#)
