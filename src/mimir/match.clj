@@ -5,6 +5,10 @@
   (:import [java.util.regex Pattern]
            [clojure.lang IPersistentMap IPersistentSet Sequential Symbol Fn Keyword]))
 
+(defprotocol MatchAny (match-any [this x acc]))
+(defprotocol MatchMap (match-map [this x acc]))
+(defprotocol MatchSeq (match-seq [this x acc]))
+
 (defn filter-walk
   [pred coll]
   (let [acc (transient [])]
@@ -28,7 +32,9 @@
   (if-let [var (if (*match-var?* pattern)
                  pattern
                  (-> pattern meta :tag))]
-    (assoc acc var x)
+    (if-let [var (acc var)]
+      (match-any var x acc)
+      (assoc acc var x))
     acc))
 
 (defn preserve-meta [form meta]
@@ -70,10 +76,6 @@
     (postwalk regex-walk x)
     (distinct (persistent! vars))))
 
-(defprotocol MatchAny (match-any [this x acc]))
-(defprotocol MatchMap (match-map [this x acc]))
-(defprotocol MatchSeq (match-seq [this x acc]))
-
 (extend-type Object
   MatchAny (match-any [this x acc] (when (= this x) acc))
   MatchMap (match-map [this x acc])
@@ -99,9 +101,7 @@
 (extend-type Symbol
   MatchAny
   (match-any [this x acc] (if (*match-var?* this)
-                            (if-let [v (acc this)]
-                              (match-any v x acc)
-                              (assoc acc this x))
+                            (bind-vars x this acc)
                             (when (= this x) acc))))
 
 (extend-type Pattern
