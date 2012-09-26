@@ -176,8 +176,8 @@
   `(match* ~x ~(prepare-matcher m &env)))
 
 (defn all-vars [lhs]
-  (concat (bound-vars lhs)
-          (map *var-symbol* (regex-vars lhs))))
+  (vec (concat (bound-vars lhs)
+               (map *var-symbol* (regex-vars lhs)))))
 
 (defmacro condm* [match-var [lhs rhs & ms]]
   `(if-let [{:syms ~(remove (set (keys &env)) (all-vars lhs))}

@@ -371,7 +371,7 @@
          (r/mapcat join-fn)
          (fold-into vector))))
 
-(defn beta-join-node [c1 c2 c1-am binding-vars wm]
+(defn beta-join-node [c2 c1-am binding-vars wm]
   (let [c2-am (alpha-memory c2 wm (some binding-vars (vars c2)))]
     (with-cache beta-join-nodes [c1-am c2-am]
       (let [join-on (join-on (-> c1-am first keys) c2)]
@@ -387,9 +387,6 @@
           (debug "result" (ellipsis result))
           result)))))
 
-(defn dummy-beta-join-node [c wm args binding-vars]
-  (beta-join-node [] c #{args} binding-vars wm))
-
 (defn order-conditions [cs]
   (mapcat #(concat (sort-by (comp count vars) (remove constraint? %))
                    (filter constraint? %))
@@ -398,12 +395,11 @@
 (defn check-rule [cs wm args]
   (debug "conditions" cs)
   (let [binding-vars (binding-vars-for-rule cs)]
-    (loop [[c1 & cs] (order-conditions cs)
-           matches (dummy-beta-join-node c1 wm args binding-vars)]
-      (if-not cs
+    (loop [[c & cs] (order-conditions cs)
+           matches #{args}]
+      (if-not c
         matches
-        (let [c2 (first cs)]
-          (recur cs (beta-join-node c1 c2 matches binding-vars wm)))))))
+        (recur cs (beta-join-node c matches binding-vars wm))))))
 
 (defn salience [p]
   (or (-> p meta :salience) 0))
