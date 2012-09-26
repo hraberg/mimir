@@ -99,7 +99,9 @@
 (extend-type Symbol
   MatchAny
   (match-any [this x acc] (if (*match-var?* this)
-                            (assoc acc this x)
+                            (if-let [v (acc this)]
+                              (match-any v x acc)
+                              (assoc acc this x))
                             (when (= this x) acc))))
 
 (extend-type Pattern
