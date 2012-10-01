@@ -3,7 +3,7 @@
         [mimir.match :only (prepare-matcher *match-var?* match-any bind-vars MatchAny)]
         [clojure.walk :only (postwalk-replace)])
   (:import [java.io Writer]
-           [clojure.lang Symbol])
+           [clojure.lang Symbol Seqable])
   (:refer-clojure :exclude [reify var? ==]))
 
 ;; Loosely based on "Implementation I: Core miniKanren", Chapter 3 in Byrd.
@@ -34,12 +34,16 @@
   (match-any [this x acc] (bind-vars x this acc))
   MatchVar
   (match-var [x this acc] (match-any x this acc))
+
+  Seqable ; hack for consᵒ
+  (seq [this] (seq ['& this]))
+
   Object
   (hashCode [this] (.hashCode name))
   (equals [this o] (and (instance? LVar o) (= (.name this) (.name o)))))
 
 (defmethod print-method LVar [o ^Writer w]
-  (print-method (str "<lvar: " (.name o) ">") w))
+  (.write w (str "(LVar. '" (.name o) ")")))
 
 (defmacro alias-macro [m a]
   `(doto (intern *ns* '~a (var ~m)) .setMacro))
@@ -68,6 +72,11 @@
      [(unify ~u ~v a#)]))
 (alias-macro ≡ ==)
 
+(defmacro ≠ [u v]
+  `(fn [a#]
+     [(when-not (unify ~u ~v a#) a#)]))
+(alias-macro ≠ !=)
+
 (defmacro condᵉ [& gs]
   (let [a (gensym "a")]
     `(fn [~a] (concat ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
@@ -83,7 +92,7 @@
     (run-internal (concat g gs) s)
     (if-not g
       s
-      (if-let [s (seq (distinct (remove nil? (mapcat #(g %) s))))]
+      (if-let [s (seq (remove nil? (mapcat #(g %) s)))]
         (recur gs s)
         ()))))
 
@@ -103,11 +112,7 @@
 (def fail (≡ false true))
 
 (defn consᵒ [a d l]
-  (if (var? d)
-    (fresh []
-      (≡ a (first l))
-      (≡ d (rest l)))
-    (≡ (cons a d) l)))
+  (≡ (cons a d) l))
 
 (defn firstᵒ [l a]
   (fresh [d]
@@ -118,7 +123,16 @@
     (consᵒ a d l)))
 
 (defn memberᵒ [x l]
-  (if l
-    (condᵉ ((firstᵒ l x))
-           ((memberᵒ x (next l))))
-    fail))
+  [(≠ l ())
+   (condᵉ
+    ((firstᵒ l x))
+    ((memberᵒ x (rest l))))])
+
+; doesn't work, LVar seq hack is too simplistic
+(defn appendᵒ [l1 l2 o]
+  (condᵉ
+   ((≡ l1 ()) (≡ l2 o))
+   ((fresh [a d r]
+           (consᵒ a d l1)
+           (consᵒ a r o)
+           (appendᵒ d l2 r)))))

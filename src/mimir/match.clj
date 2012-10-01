@@ -147,7 +147,7 @@
   (match-seq [x this acc] (loop [[p & ps] this
                                  [y & ys] x
                                  acc acc]
-                            (if-not p
+                            (if (and (not p) (not y))
                               (bind-vars x this acc)
                               (if (= '& p)
                                 (let [rst (when y (vec (cons y ys)))]
