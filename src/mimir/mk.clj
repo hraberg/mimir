@@ -1,6 +1,6 @@
 (ns mimir.mk
   (:use [clojure.tools.logging :only (debug info warn error spy)]
-        [mimir.match :only (prepare-matcher *match-var?* match-any bind-vars MatchAny)]
+        [mimir.match :only (filter-walk prepare-matcher *match-var?* match-any bind-vars MatchAny)]
         [clojure.walk :only (postwalk-replace)])
   (:import [java.io Writer]
            [clojure.lang Symbol Seqable])
@@ -35,8 +35,8 @@
   MatchVar
   (match-var [x this acc] (match-any x this acc))
 
-  Seqable ; hack for consᵒ
-  (seq [this] (seq ['& this]))
+  ;; Seqable ; hack for consᵒ
+  ;; (seq [this] (seq ['& this]))
 
   Object
   (hashCode [this] (.hashCode name))
@@ -98,9 +98,9 @@
 
 (defn ^:private reify-goal [xs s]
   (let [xs (map #(reify % s) xs)
-        vs (filter var? xs)
+        vs (distinct (filter-walk var? xs))
         vs (zipmap vs (map-indexed (fn [idx _] (reify-name idx)) vs))]
-    (replace vs xs)))
+    (postwalk-replace vs xs)))
 
 (defmacro run* [[& x] & g]
   `(run-internal (exist [~@x] ~@g (partial reify-goal ~(vec x))) [{}]))
@@ -112,7 +112,8 @@
 (def fail (≡ false true))
 
 (defn consᵒ [a d l]
-  (≡ (cons a d) l))
+  (let [d (if (var? d) ['& d] d)]
+    (≡ l (cons a d))))
 
 (defn firstᵒ [l a]
   (fresh [d]
