@@ -48,7 +48,6 @@
   `(doto (intern *ns* '~a (var ~m)) .setMacro))
 
 (defn var? [x] (instance? LVar x))
-(alter-var-root #'*match-var?* (constantly var?))
 
 (defn cons-pairs-to-seqs [x]
   (if (and (seq? x) (= 3 (count x)) (= '. (second x)))
@@ -56,10 +55,11 @@
     x))
 
 (defmacro unify [u v s]
-  `(let [u# (match-any ~(prepare-matcher u &env) ~(prepare-matcher v &env) ~s)
-         v# (match-any ~(prepare-matcher v &env) ~(prepare-matcher u &env) ~s)]
-     (println "UNI" ~u ~v ~s u# v# (merge u# v#))
-     (merge u# v#)))
+  `(binding [*match-var?* var?]
+     (let [u# (match-any ~(prepare-matcher u &env) ~(prepare-matcher v &env) ~s)
+           v# (match-any ~(prepare-matcher v &env) ~(prepare-matcher u &env) ~s)]
+       (println "UNI" ~u ~v ~s u# v# (merge u# v#))
+       (merge u# v#))))
 
 (def ^:private subscripts '[₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉])
 
@@ -87,13 +87,12 @@
     `(fn [~a] (concat ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
 (alias-macro condᵉ conde)
 
-(def ^:private lvars (atom 0))
 (defmacro exist [[& x] & gs]
   `(let [~@(mapcat (fn [x] `[~x (LVar. (gensym '~x))]) x)]
      [~@gs]))
 (alias-macro exist fresh)
 
-(defn ^:private run-internal [[g & gs] s]
+(defn run-internal [[g & gs] s]
   (println "S" s)
   (if (sequential? g)
     (run-internal (concat g gs) s)
@@ -103,14 +102,15 @@
         (recur gs s)
         ()))))
 
-(defn ^:private reify-goal [xs s]
+(defn reify-goal [xs s]
   (let [xs (map #(reify % s) xs)
         vs (distinct (filter-walk var? xs))
         vs (zipmap vs (map-indexed (fn [idx _] (reify-name idx)) vs))]
     (postwalk cons-pairs-to-seqs (postwalk-replace vs xs))))
 
 (defmacro run* [[& x] & g]
-  `(run-internal (exist [~@x] ~@g (partial reify-goal ~(vec x))) [{}]))
+  `(binding [*match-var?* var?]
+     (run-internal (exist [~@x] ~@g (partial reify-goal ~(vec x))) [{}])))
 
 (defmacro run [n [& x] & g]
   `(take ~n (run* [~@x] ~@g)))

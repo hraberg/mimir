@@ -2,7 +2,7 @@
   (:use [clojure.set :only (intersection map-invert rename-keys difference union join)]
         [clojure.tools.logging :only (debug info warn error spy)]
         [clojure.walk :only (postwalk postwalk-replace)]
-        [mimir.match :only (filter-walk maybe-singleton-coll match all-vars *match-var?*)])
+        [mimir.match :only (filter-walk maybe-singleton-coll match all-vars *match-var?* default-match-var?)])
   (:require [clojure.core.reducers :as r])
   (:refer-clojure :exclude [assert])
   (:gen-class))
@@ -34,7 +34,7 @@
 (defn var-sym [x]
   (symbol (str "?" x)))
 
-(alter-var-root #'*match-var?* (constantly (every-pred *match-var?* (complement is-var?))))
+(alter-var-root #'*match-var?* (constantly (every-pred default-match-var? (complement is-var?))))
 
 (defn is-matcher? [x xs]
   (and (is-var? x) (not (symbol? (first xs)))))
