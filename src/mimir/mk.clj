@@ -1,7 +1,7 @@
 (ns mimir.mk
   (:use [clojure.tools.logging :only (debug info warn error spy)]
-        [mimir.match :only (filter-walk prepare-matcher *match-var?* match-any bind-vars MatchAny)]
-        [clojure.walk :only (postwalk-replace)])
+        [mimir.match :only (filter-walk prepare-matcher *match-var?* match-any bind-vars MatchAny MatchSeq)]
+        [clojure.walk :only (postwalk-replace postwalk)])
   (:import [java.io Writer]
            [clojure.lang Symbol Seqable])
   (:refer-clojure :exclude [reify var? ==]))
@@ -34,9 +34,8 @@
   (match-any [this x acc] (bind-vars x this acc))
   MatchVar
   (match-var [x this acc] (match-any x this acc))
-
-  ;; Seqable ; hack for consᵒ
-  ;; (seq [this] (seq ['& this]))
+  MatchSeq
+  (match-seq [x this acc] (match-any this (acc x) acc))
 
   Object
   (hashCode [this] (.hashCode name))
@@ -51,9 +50,15 @@
 (defn var? [x] (instance? LVar x))
 (alter-var-root #'*match-var?* (constantly var?))
 
+(defn cons-pairs-to-seqs [x]
+  (if (and (seq? x) (= 3 (count x)) (= '. (second x)))
+    (cons (first x) (if ((some-fn sequential? nil?) (last x)) (last x) [(last x)]))
+    x))
+
 (defmacro unify [u v s]
   `(let [u# (match-any ~(prepare-matcher u &env) ~(prepare-matcher v &env) ~s)
          v# (match-any ~(prepare-matcher v &env) ~(prepare-matcher u &env) ~s)]
+     (println "UNI" ~u ~v ~s u# v# (merge u# v#))
      (merge u# v#)))
 
 (def ^:private subscripts '[₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉])
@@ -82,12 +87,14 @@
     `(fn [~a] (concat ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
 (alias-macro condᵉ conde)
 
+(def ^:private lvars (atom 0))
 (defmacro exist [[& x] & gs]
-  `(let [~@(mapcat (fn [x] [x (LVar. x)]) x)]
+  `(let [~@(mapcat (fn [x] `[~x (LVar. (gensym '~x))]) x)]
      [~@gs]))
 (alias-macro exist fresh)
 
 (defn ^:private run-internal [[g & gs] s]
+  (println "S" s)
   (if (sequential? g)
     (run-internal (concat g gs) s)
     (if-not g
@@ -100,7 +107,7 @@
   (let [xs (map #(reify % s) xs)
         vs (distinct (filter-walk var? xs))
         vs (zipmap vs (map-indexed (fn [idx _] (reify-name idx)) vs))]
-    (postwalk-replace vs xs)))
+    (postwalk cons-pairs-to-seqs (postwalk-replace vs xs))))
 
 (defmacro run* [[& x] & g]
   `(run-internal (exist [~@x] ~@g (partial reify-goal ~(vec x))) [{}]))
@@ -112,10 +119,15 @@
 (def fail (≡ false true))
 
 (defn consᵒ [a d l]
-  (let [d (if (var? d) ['& d] d)]
-    (≡ l (cons a d))))
+  (println "CONSO" a d l)
+  (if (var? l)
+    (let [d (if (var? d) ['. d] d)]
+      (≡ (cons a d) l))
+    [(≡ a (first l))
+     (≡ d (rest l))]))
 
 (defn firstᵒ [l a]
+  (println "FIRSTO" l a)
   (fresh [d]
     (consᵒ a d l)))
 
@@ -123,17 +135,27 @@
   (fresh [a]
     (consᵒ a d l)))
 
-(defn memberᵒ [x l]
-  [(≠ l ())
-   (condᵉ
-    ((firstᵒ l x))
-    ((memberᵒ x (rest l))))])
+;; (defn memberᵒ [x l]
+;;   [(≠ l ())
+;;    (condᵉ
+;;     ((firstᵒ l x))
+;;     ((memberᵒ x (rest l))))])
 
-; doesn't work, LVar seq hack is too simplistic
+
+; these doesn't work, LVar seq hack is too simplistic
+(defn memberᵒ [x ls]
+  (println "MEMBERO" x ls)
+  (fresh [a d]
+    (≠ ls ())
+    (consᵒ a d ls)
+    (conde
+      ((≡ a x))
+      ((memberᵒ x d)))))
+
 (defn appendᵒ [l1 l2 o]
   (condᵉ
    ((≡ l1 ()) (≡ l2 o))
    ((fresh [a d r]
-           (consᵒ a d l1)
-           (consᵒ a r o)
-           (appendᵒ d l2 r)))))
+      (consᵒ a d l1)
+      (consᵒ a r o)
+      (appendᵒ d l2 r)))))

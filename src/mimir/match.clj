@@ -33,7 +33,7 @@
                  pattern
                  (-> pattern meta :tag))]
     (if-let [v (acc var)]
-      (if-not (or (= v var))
+      (if-not (= v var)
         (if (= (acc v) var)
           (assoc acc var x)
           (match-any v x acc))
@@ -149,7 +149,7 @@
                                  acc acc]
                             (if (and (not p) (not y))
                               (bind-vars x this acc)
-                              (if (= '& p)
+                              (if ('#{& .} p)
                                 (let [rst (when y (vec (cons y ys)))]
                                   (when-let [acc (if (*match-var?* (first ps))
                                                    acc
