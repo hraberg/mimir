@@ -1,10 +1,10 @@
 (ns mimir.test.mk
   (:use [mimir.mk]
         [mimir.match :only (*match-var?*)]
-        [mimir.test.common]
         [clojure.test])
   (:refer-clojure :exclude [reify var? ==]))
 
+;; Mess of compile time and runtime requires this atm:
 (def mv *match-var?*)
 (alter-var-root #'*match-var?* (constantly var?))
 
