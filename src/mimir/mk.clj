@@ -129,8 +129,7 @@
   (println "CONSO" a d l)
   (if (var? l)
     (let [d (if (var? d) ['. d] d)]
-      [(≠ () l)
-       (≡ (cons a d) l)])
+      (≡ (cons a d) l))
     [(≡ a (first l))
      (≡ d (rest l))]))
 

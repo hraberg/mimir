@@ -43,6 +43,7 @@
              ((≡ [z y x z] q)))))
                      ⇒ '((–₀ –₁ –₂ –₀) (–₀ –₁ –₂ –₀)))
 
+  ;; StackOverflow when compiling using are, something about symbols
   (is (= '((a 1 d) (b 2 e) (c 3 f))
          (run 5 [q]
            (exist [x y z]
@@ -164,6 +165,51 @@
        ;;   (consᵒ 1 x q)
        ;;   (restᵒ q x))
        ;;              ⇒ '(–₀ (1 . –₀))
-))
+                      ))
+
+(deftest memberᵒ-the-divergent
+  (are [a _ e] (is (= a e))
+
+       (run* [q]
+         (memberᵒ q [1 2 3]))
+                    ⇒ '(1 2 3)
+
+       (run* [q]
+         (memberᵒ 7 [1 3 8 q]))
+                    ⇒ '(7)
+
+       ;; (run 3 [q]
+       ;;   (memberᵒ 3 q))
+       ;;              ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))
+                      ))
+
+(deftest appendᵒ-the-great
+  (are [a _ e] (is (= a e))
+
+       ;; (run* [q]
+       ;;   (appendᵒ '(1 2 3) '(4 5) q))
+       ;;                 ⇒ '((1 2 3 4 5))
+
+       ;; (run* [q]
+       ;;   (appendᵒ [1 2] [3 4] q))
+       ;;              ⇒ '((1 2 3 4))
+
+       ;; (run* [q]
+       ;;   (appendᵒ [1 2] q [1 2 3 4]))
+       ;;              ⇒ '((3 4))
+
+       (run* [q]
+         (appendᵒ q [3 4] [1 2 3 4]))
+                       ⇒ '((1 2))
+
+       ;; last nil/() gets pruned
+       ;; (run* [w q]
+       ;;   (appendᵒ w q [1 2 3 4]))
+       ;;                 ⇒ '(() (1 2 3 4)
+       ;;                     (1) (2 3 4)
+       ;;                     (1 2) (3 4)
+       ;;                     (1 2 3) (4)
+       ;;                     (1 2 3 4) ())
+                         ))
 
 (alter-var-root #'*match-var?* (constantly mv))
