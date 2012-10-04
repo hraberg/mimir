@@ -17,7 +17,6 @@
                             (match-any x this acc)))
   nil
   (match-var [this x acc])
-
   Symbol
   (match-var [x this acc] (match-any x this acc)))
 
@@ -36,13 +35,12 @@
   (match-var [x this acc] (match-any x this acc))
   MatchSeq
   (match-seq [x this acc] (match-any this (acc x) acc))
-
   Object
-  (hashCode [this] (.hashCode name))
+  (hashCode [this] (if name (.hashCode name) 0))
   (equals [this o] (and (instance? LVar o) (= (.name this) (.name o)))))
 
 (defmethod print-method LVar [o ^Writer w]
-  (.write w (str "(LVar. '" (.name o) ")")))
+  (.write w (str (.name o))))
 
 (defmacro alias-macro [m a]
   `(doto (intern *ns* '~a (var ~m)) .setMacro))
@@ -50,15 +48,18 @@
 (defn var? [x] (instance? LVar x))
 
 (defn cons-pairs-to-seqs [x]
-  (if (and (seq? x) (= 3 (count x)) (= '. (second x)))
-    (cons (first x) (if ((some-fn sequential? nil?) (last x)) (last x) [(last x)]))
+  (if (and (sequential? x) (= 3 (count x)) (= '. (second x)))
+    (cond
+      ((some-fn sequential? nil?) (last x)) (cons (first x) (last x))
+      ((some-fn sequential? nil?) (first x)) (concat (first x) (rest x))
+      :else x)
     x))
 
 (defmacro unify [u v s]
   `(binding [*match-var?* var?]
      (let [u# (match-any ~(prepare-matcher u &env) ~(prepare-matcher v &env) ~s)
            v# (match-any ~(prepare-matcher v &env) ~(prepare-matcher u &env) ~s)]
-       (println "UNI" ~u ~v ~s u# v# (merge u# v#))
+       (println "UNI" '~u '~v ~s u# v# (merge u# v#))
        (merge u# v#))))
 
 (def ^:private subscripts '[₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉])
@@ -82,9 +83,14 @@
      [(when-not (unify ~u ~v a#) a#)]))
 (alias-macro ≠ !=)
 
+(defn interleave-all [& colls]
+  (lazy-seq
+    (when-let [ss (seq (remove nil? (map seq colls)))]
+      (concat (map first ss) (apply interleave-all (map rest ss))))))
+
 (defmacro condᵉ [& gs]
   (let [a (gensym "a")]
-    `(fn [~a] (concat ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
+    `(fn [~a] (interleave-all ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
 (alias-macro condᵉ conde)
 
 (defmacro exist [[& x] & gs]
@@ -134,13 +140,6 @@
 (defn restᵒ [l d]
   (fresh [a]
     (consᵒ a d l)))
-
-;; (defn memberᵒ [x l]
-;;   [(≠ l ())
-;;    (condᵉ
-;;     ((firstᵒ l x))
-;;     ((memberᵒ x (rest l))))])
-
 
 ; these doesn't work, LVar seq hack is too simplistic
 (defn memberᵒ [x ls]

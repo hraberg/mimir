@@ -141,6 +141,8 @@
                                 (bind-vars x this acc)
                                 (recur ks acc))))))
 
+(def rest? '#{& .})
+
 (extend-type Sequential
   MatchAny
   (match-any [this x acc] (match-seq x this acc))
@@ -148,17 +150,19 @@
   (match-seq [x this acc] (loop [[p & ps] this
                                  [y & ys] x
                                  acc acc]
-                            (if (and (not p) (not y))
-                              (bind-vars x this acc)
-                              (if ('#{& .} p)
-                                (let [rst (when y (vec (cons y ys)))]
-                                  (when-let [acc (if (*match-var?* (first ps))
-                                                   acc
-                                                   (match-seq rst (repeat (count rst)
-                                                                          (first ps)) acc))]
-                                    (bind-vars rst (first ps) acc)))
-                                (when-let [acc (match-any p y acc)]
-                                  (recur ps ys (bind-vars y p acc))))))))
+                            (if (rest? y)
+                              (recur (cons p ps) ys acc)
+                              (if (or (and (not p) (not y)))
+                                (bind-vars x this acc)
+                                (if (rest? p)
+                                  (let [rst (when y (vec (cons y ys)))]
+                                    (when-let [acc (if (*match-var?* (first ps))
+                                                     acc
+                                                     (match-seq rst (repeat (count rst)
+                                                                            (first ps)) acc))]
+                                      (bind-vars rst (first ps) acc)))
+                                  (when-let [acc (match-any p y acc)]
+                                    (recur ps ys (bind-vars y p acc)))))))))
 
 (defn truth [& _] true)
 
@@ -172,7 +176,7 @@
 
 (defn prepare-matcher [m &env]
   (->> (preserve-meta (walk identity meta-walk m) (meta m))
-       (postwalk-replace {'_ truth :else truth})
+       (postwalk-replace {'_ truth :else truth '. ''.})
        (unquote-vars-in-scope &env)))
 
 (defn match* [x pattern] (match-any pattern x {}))

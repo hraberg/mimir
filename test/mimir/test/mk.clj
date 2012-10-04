@@ -8,66 +8,72 @@
 (def mv *match-var?*)
 (alter-var-root #'*match-var?* (constantly var?))
 
-(use-fixtures :once (fn [suite]
-                      (binding [mimir.match/*match-var?* var?]
-                        (suite))))
-
 (deftest introduction-to-core-minikanren
   (are [a _ e] (is (= a e))
 
        (run 1 [q]
-            (exist [x y z]
-             (≡ x z)
-             (≡ 3 y))) ⇒ '(–₀)
+         (exist [x y z]
+           (≡ x z)
+           (≡ 3 y))) ⇒ '(–₀)
 
        (run 1 [y]
-            (exist [x z]
-             (≡ x z)
-             (≡ 3 y))) ⇒ '(3)
+         (exist [x z]
+           (≡ x z)
+           (≡ 3 y))) ⇒ '(3)
 
        (run 1 [q]
-            (exist [x z]
-             (≡ x z)
-             (≡ 3 z)
-             (≡ q x))) ⇒ '(3)
+         (exist [x z]
+           (≡ x z)
+           (≡ 3 z)
+           (≡ q x))) ⇒ '(3)
 
        (run 1 [y]
-            (exist [x y]
-             (≡ 4 x)
-             (≡ x y))
-            (≡ 3 y))   ⇒ '(3)
+         (exist [x y]
+           (≡ 4 x)
+           (≡ x y))
+         (≡ 3 y))    ⇒ '(3)
 
        (run 1 [y]
-            (≡ 3 4))   ⇒ ()
+         (≡ 3 4))    ⇒ ()
 
        (run 2 [q]
-            (exist [x y z]
-              (condᵉ
-                ((≡ [x y z x] q))
-                ((≡ [z y x z] q)))))
-                       ⇒ '((–₀ –₁ –₂ –₀) (–₀ –₁ –₂ –₀)))
+         (exist [x y z]
+           (condᵉ
+             ((≡ [x y z x] q))
+             ((≡ [z y x z] q)))))
+                     ⇒ '((–₀ –₁ –₂ –₀) (–₀ –₁ –₂ –₀)))
 
   (is (= '((a 1 d) (b 2 e) (c 3 f))
          (run 5 [q]
-              (exist [x y z]
-                (condᵉ
-                  ((≡ 'a x) (≡ 1 y) (≡ 'd z))
-                  ((≡ 2 y) (≡ 'b x) (≡ 'e z))
-                  ((≡ 'f z) (≡ 'c x) (≡ 3 y)))
-                (≡ [x y z] q)))))
+           (exist [x y z]
+             (condᵉ
+               ((≡ 'a x) (≡ 1 y) (≡ 'd z))
+               ((≡ 2 y) (≡ 'b x) (≡ 'e z))
+               ((≡ 'f z) (≡ 'c x) (≡ 3 y)))
+             (≡ [x y z] q)))))
 
   (defn anyᵒ [g]
     (condᵉ
       (g)
       ((anyᵒ g))))
 
-  ;; StackOverflow
-  ;; (is ([false false false false true]
-  ;;        (sort (run 5 [q]
-  ;;                   (condᵉ
-  ;;                    ((anyᵒ (≡ false q)))
-  ;;                    ((≡ true q)))))))
-  )
+  ;;StackOverflow
+  ;; (are [a _ e] (is (= a e))
 
+  ;;      (sort (run 5 [q]
+  ;;              (condᵉ
+  ;;                ((anyᵒ (≡ false q)))
+  ;;                ((≡ true q)))))
+  ;;                    ⇒ '(false false false false true)
+
+  ;;       (run 10 [q]
+  ;;            (anyᵒ
+  ;;             (condᵉ
+  ;;              ((≡ 1 q))
+  ;;              ((≡ 2 q))
+  ;;              ((≡ 3 q)))))
+  ;;                      ⇒ '(1 2 3 1 2 3 1 2 3 1)
+  ;;      )
+ )
 
 (alter-var-root #'*match-var?* (constantly mv))
