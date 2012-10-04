@@ -95,8 +95,29 @@
          (consᵒ 1 [2 q] [1 2 3]))
                      ⇒ '(3)
 
+       (run* [q w]
+         (consᵒ q w [1 2 3]))
+                     ⇒ '(1 (2 3))
+
+       (run* [q w z]
+         (consᵒ q w z))
+                     ⇒ '(–₀ –₁ (–₀ . –₁))
+
        (run* [q]
          (restᵒ [1 2 3 4] q))
-                     ⇒ '((2 3 4))))
+                     ⇒ '((2 3 4))
+
+       (run* [q]
+         (restᵒ q [2 3 4]))
+                     ⇒ '((–₀ 2 3 4))
+
+
+       (run* [q]
+         (firstᵒ [1 2 3 4] q))
+                     ⇒ '(1)
+
+       (run* [q]
+         (firstᵒ q 1))
+                     ⇒ '((1 . –₀))))
 
 (alter-var-root #'*match-var?* (constantly mv))
