@@ -80,7 +80,7 @@
 
 (defmacro ≠ [u v]
   `(fn [a#]
-     [(when-not (unify ~u ~v a#) a#)]))
+     [(when-not (seq (select-keys (unify ~u ~v a#) (keys a#))) a#)]))
 (alias-macro ≠ !=)
 
 (defn interleave-all [& colls]
@@ -128,7 +128,8 @@
   (println "CONSO" a d l)
   (if (var? l)
     (let [d (if (var? d) ['. d] d)]
-      (≡ (cons a d) l))
+      [(≠ () l)
+       (≡ (cons a d) l)])
     [(≡ a (first l))
      (≡ d (rest l))]))
 
@@ -145,7 +146,6 @@
 (defn memberᵒ [x ls]
   (println "MEMBERO" x ls)
   (fresh [a d]
-    (≠ ls ())
     (consᵒ a d ls)
     (conde
       ((≡ a x))
