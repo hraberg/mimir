@@ -76,4 +76,27 @@
   ;;      )
  )
 
+(deftest consᵒ-the-magnificent
+  (are [a _ e] (is (= a e))
+
+       (run* [q]
+         (consᵒ 1 [2 3] q))
+                     ⇒ '((1 2 3))
+
+       (run* [q]
+         (consᵒ 1 q [1 2 3]))
+                     ⇒ '((2 3))
+
+       (run* [q]
+         (consᵒ q [2 3] [1 2 3]))
+                     ⇒ '(1)
+
+       (run* [q]
+         (consᵒ 1 [2 q] [1 2 3]))
+                     ⇒ '(3)
+
+       (run* [q]
+         (restᵒ [1 2 3 4] q))
+                     ⇒ '((2 3 4))))
+
 (alter-var-root #'*match-var?* (constantly mv))

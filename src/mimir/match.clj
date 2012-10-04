@@ -33,12 +33,13 @@
   (if-let [var (if (*match-var?* pattern)
                  pattern
                  (-> pattern meta :tag))]
-    (if-let [v (acc var)]
-      (if-not (= v var)
-        (if (= (acc v) var)
-          (assoc acc var x)
-          (match-any v x acc))
-        acc)
+    (if (contains? acc var)
+      (let [v (acc var)]
+        (if-not (= v var)
+          (if (= (acc v) var)
+            (assoc acc var x)
+            (match-any v x acc))
+          acc))
       (assoc acc var x))
     acc))
 

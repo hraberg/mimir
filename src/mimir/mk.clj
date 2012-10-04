@@ -18,7 +18,7 @@
   nil
   (match-var [this x acc])
   Symbol
-  (match-var [x this acc] (match-any x this acc)))
+  (match-var [x this acc]))
 
 (extend-protocol MatchAny
   Object
@@ -30,7 +30,8 @@
 
 (deftype LVar [name]
   MatchAny
-  (match-any [this x acc] (bind-vars x this acc))
+  (match-any [this x acc]  (if (= this x) acc
+                               (bind-vars x this acc)))
   MatchVar
   (match-var [x this acc] (match-any x this acc))
   MatchSeq
@@ -51,7 +52,7 @@
   (if (and (sequential? x) (= 3 (count x)) (= '. (second x)))
     (cond
       ((some-fn sequential? nil?) (last x)) (cons (first x) (last x))
-      ((some-fn sequential? nil?) (first x)) (concat (first x) (rest x))
+;      ((some-fn sequential? nil?) (first x)) (concat (first x) (rest x))
       :else x)
     x))
 
@@ -59,7 +60,7 @@
   `(binding [*match-var?* var?]
      (let [u# (match-any ~(prepare-matcher u &env) ~(prepare-matcher v &env) ~s)
            v# (match-any ~(prepare-matcher v &env) ~(prepare-matcher u &env) ~s)]
-       (println "UNI" '~u '~v ~s u# v# (merge u# v#))
+       (println "UNI" ~u ~v ~s u# v# (merge u# v#))
        (merge u# v#))))
 
 (def ^:private subscripts '[₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉])
@@ -139,6 +140,7 @@
     (consᵒ a d l)))
 
 (defn restᵒ [l d]
+  (println "RESTO" l d)
   (fresh [a]
     (consᵒ a d l)))
 
