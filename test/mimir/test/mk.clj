@@ -103,6 +103,26 @@
          (consᵒ q w z))
                      ⇒ '(–₀ –₁ (–₀ . –₁))
 
+       (run* [q w z]
+         (consᵒ q w z)
+         (≡ q 1))
+                     ⇒ '(1 –₀ (1 . –₀))
+
+       ;; (run* [q w z]
+       ;;   (consᵒ q w z)
+       ;;   (firstᵒ z 1))
+       ;;               ⇒ '(1 –₀ (1 . –₀))
+
+       (run* [q w z]
+         (consᵒ q w z)
+         (≡ w [2 3]))
+                     ⇒ '(–₀ (2 3) (–₀ 2 3))
+
+       ;; (run* [q w z]
+       ;;   (consᵒ q w z)
+       ;;   (restᵒ z [2 3]))
+       ;;               ⇒ '(–₀ (2 3) (–₀ 2 3))
+
        (run* [q]
          (restᵒ [1 2 3 4] q))
                      ⇒ '((2 3 4))
@@ -111,13 +131,39 @@
          (restᵒ q [2 3 4]))
                      ⇒ '((–₀ 2 3 4))
 
-
        (run* [q]
          (firstᵒ [1 2 3 4] q))
                      ⇒ '(1)
 
        (run* [q]
          (firstᵒ q 1))
-                     ⇒ '((1 . –₀))))
+                     ⇒ '((1 . –₀))
+
+       (run* [q]
+         (consᵒ 1 [2 3] q)
+         (firstᵒ q 1)
+         (restᵒ q [2 3]))
+                    ⇒ '((1 2 3))
+
+       (run* [q]
+         (consᵒ 1 [2 3] q)
+         (firstᵒ q 0))
+                    ⇒ '()
+
+       (run* [q]
+         (consᵒ 1 [2 3] q)
+         (restᵒ q [0]))
+                    ⇒ '()
+
+       (run* [x q]
+         (consᵒ x [2 3] q)
+         (firstᵒ q x))
+                    ⇒ '(–₀ (–₀ 2 3))
+
+       ;; (run* [x q]
+       ;;   (consᵒ 1 x q)
+       ;;   (restᵒ q x))
+       ;;              ⇒ '(–₀ (1 . –₀))
+))
 
 (alter-var-root #'*match-var?* (constantly mv))
