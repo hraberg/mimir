@@ -178,6 +178,11 @@ When used inside rules, the bindings currently has to be referenced with a `?` p
 No performance tuning has been made - partly because there are no tests for this beast yet.
 
 
+#### miniKanren subset
+
+Mimir contains a small subset of [miniKanren](https://github.com/hraberg/mimir/blob/master/src/mimir/mk.clj), using Mimir's [matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj) to unify. This was inspired by seeing David Nolen's [unsession](http://www.youtube.com/watch?v=A7de6pC-tnU) about [core.logic](https://github.com/clojure/core.logic/) at StrangeLoop 2012. There's currently no clear way to use this together with Mimir proper, early days.
+
+
 ## References
 
 [Production Matching for Large Learning Systems](http://reports-archive.adm.cs.cmu.edu/anon/1995/CMU-CS-95-113.pdf) Robert B. Doorenbos, 1995
@@ -185,6 +190,12 @@ No performance tuning has been made - partly because there are no tests for this
 [Jess in Action: Java Rule-based Systems](http://www.manning.com/friedman-hill/) Ernest Friedman-Hill, 2003
 
 [OPS5](https://github.com/briangu/OPS5) "This Common Lisp version of OPS5 is in the public domain.  It is based in part on based on a Franz Lisp implementation done by Charles L. Forgy"
+
+[Relational Programming in miniKanren: Techniques, Applications, and Implementations](http://gradworks.umi.com/3380156.pdf) Byrd, 2009
+
+[Transliterating Prolog into Scheme](http://www.cs.indiana.edu/pub/techreports/TR182.pdf) Felleisen, 1985
+
+[core.logic - A Tutorial Reconstruction](http://www.youtube.com/watch?v=A7de6pC-tnU) Nolen, 2012
 
 [Rule Solver: Constraint Programming with OpenRules](http://openrules.com/pdf/RulesSolver.UserManual.pdf) Jacob Feldman, 2012
 
