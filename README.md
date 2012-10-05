@@ -193,7 +193,7 @@ Mimir contains a small subset of [miniKanren](https://github.com/hraberg/mimir/b
 
 [Relational Programming in miniKanren: Techniques, Applications, and Implementations](http://gradworks.umi.com/3380156.pdf) Byrd, 2009
 
-[Transliterating Prolog into Scheme](http://www.cs.indiana.edu/pub/techreports/TR182.pdf) Felleisen, 1985
+[Transliterating Prolog into Scheme](http://www.cs.indiana.edu/pub/techreports/TR182.pdf) Felleisen, 1985. Great, short paper, the "Prolog" fits on one page. Most my projects could be said to have been inspired by this transliterate style (into Clojure) - if only I had read it earlier.
 
 [core.logic - A Tutorial Reconstruction](http://www.youtube.com/watch?v=A7de6pC-tnU) Nolen, 2012
 
