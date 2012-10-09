@@ -8,27 +8,28 @@
 (def mv *match-var?*)
 (alter-var-root #'*match-var?* (constantly var?))
 
+
 (deftest introduction-to-core-minikanren
   (are [a _ e] (is (= a e))
 
        (run 1 [q]
-         (exist [x y z]
+         (fresh [x y z]
            (≡ x z)
            (≡ 3 y))) ⇒ '(–₀)
 
        (run 1 [y]
-         (exist [x z]
+         (fresh [x z]
            (≡ x z)
            (≡ 3 y))) ⇒ '(3)
 
        (run 1 [q]
-         (exist [x z]
+         (fresh [x z]
            (≡ x z)
            (≡ 3 z)
            (≡ q x))) ⇒ '(3)
 
        (run 1 [y]
-         (exist [x y]
+         (fresh [x y]
            (≡ 4 x)
            (≡ x y))
          (≡ 3 y))    ⇒ '(3)
@@ -37,7 +38,7 @@
          (≡ 3 4))    ⇒ ()
 
        (run 2 [q]
-         (exist [x y z]
+         (fresh [x y z]
            (condᵉ
              ((≡ [x y z x] q))
              ((≡ [z y x z] q)))))
@@ -46,7 +47,7 @@
   ;; StackOverflow when compiling using are, something about symbols
   (is (= '((a 1 d) (b 2 e) (c 3 f))
          (run 5 [q]
-           (exist [x y z]
+           (fresh [x y z]
              (condᵉ
                ((≡ 'a x) (≡ 1 y) (≡ 'd z))
                ((≡ 2 y) (≡ 'b x) (≡ 'e z))
@@ -76,6 +77,42 @@
   ;;                      ⇒ '(1 2 3 1 2 3 1 2 3 1)
   ;;      )
  )
+
+(deftest unification
+  (are [a _ e] (is (= a e))
+
+       (run* [q]
+         (≡ 5 5)) ⇒ '(–₀)
+
+       (run* [q]
+         (≡ 5 4)) ⇒ ()
+
+       (run* [q]
+         (≡ 5 q)
+         (≡ 5 q)) ⇒ '(5)
+
+       (run* [q]
+         (≡ 5 q)
+         (≡ 4 q)) ⇒ ()
+
+      ;; (run* [q]
+      ;;    (fresh [x y]
+      ;;      (≡ [x 2] [1 y])
+      ;;      (≡ q [x y])))
+      ;;             ⇒ '([1 2])
+
+      (run* [q]
+        (fresh [x y]
+           (≡ x y)
+           (≡ q [x y])))
+                  ⇒ '([–₀ –₀])
+
+      (run* [q]
+        (fresh [x y]
+          (≡ x y)
+          (≡ y 1)
+          (≡ q [x y])))
+                  ⇒ '([1 1])))
 
 (deftest consᵒ-the-magnificent
   (are [a _ e] (is (= a e))
@@ -109,20 +146,20 @@
          (≡ q 1))
                      ⇒ '(1 –₀ (1 . –₀))
 
-       ;; (run* [q w z]
-       ;;   (consᵒ q w z)
-       ;;   (firstᵒ z 1))
-       ;;               ⇒ '(1 –₀ (1 . –₀))
+       (run* [q w z]
+         (consᵒ q w z)
+         (firstᵒ z 1))
+                     ⇒ '(1 –₀ (1 . –₀))
 
        (run* [q w z]
          (consᵒ q w z)
          (≡ w [2 3]))
                      ⇒ '(–₀ (2 3) (–₀ 2 3))
 
-       ;; (run* [q w z]
-       ;;   (consᵒ q w z)
-       ;;   (restᵒ z [2 3]))
-       ;;               ⇒ '(–₀ (2 3) (–₀ 2 3))
+       (run* [q w z]
+         (consᵒ q w z)
+         (restᵒ z [2 3]))
+                     ⇒ '(–₀ (2 3) (–₀ 2 3))
 
        (run* [q]
          (restᵒ [1 2 3 4] q))
@@ -161,10 +198,10 @@
          (firstᵒ q x))
                     ⇒ '(–₀ (–₀ 2 3))
 
-       ;; (run* [x q]
-       ;;   (consᵒ 1 x q)
-       ;;   (restᵒ q x))
-       ;;              ⇒ '(–₀ (1 . –₀))
+       (run* [x q]
+         (consᵒ 1 x q)
+         (restᵒ q x))
+                    ⇒ '(–₀ (1 . –₀))
                       ))
 
 (deftest memberᵒ-the-divergent

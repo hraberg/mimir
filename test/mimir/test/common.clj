@@ -15,7 +15,7 @@
     `(is (subset? ~(set expected) (set (run))))))
 
 (defn with-reset-fixture []
-  (use-fixtures :each (fn [f] (reset) (f) (reset))))
+  (use-fixtures :each (fn [f] (reset) (require '[mimir.match :reload true]) (f) (reset))))
 
 (defn integers
   ([] (integers 0 9))
