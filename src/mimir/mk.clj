@@ -159,6 +159,7 @@
       ((memberᵒ x d)))))
 
 (defn appendᵒ [l1 l2 o]
+  (debug "appendᵒ" l1 l2 o)
   (condᵉ
    ((≡ l1 ()) (≡ l2 o))
    ((fresh [a d r]

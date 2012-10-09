@@ -90,7 +90,7 @@
 (extend-type nil
   MatchAny (match-any [this x acc] (when (nil? x) acc))
   MatchMap (match-map [this x acc])
-  MatchSeq (match-seq [this x acc]))
+  MatchSeq (match-seq [this x acc] (when-not (seq x) acc)))
 
 (extend-type IPersistentMap
   MatchAny

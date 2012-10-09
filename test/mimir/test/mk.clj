@@ -8,7 +8,6 @@
 (def mv *match-var?*)
 (alter-var-root #'*match-var?* (constantly var?))
 
-
 (deftest introduction-to-core-minikanren
   (are [a _ e] (is (= a e))
 
@@ -223,17 +222,17 @@
 (deftest appendᵒ-the-great
   (are [a _ e] (is (= a e))
 
-       ;; (run* [q]
-       ;;   (appendᵒ '(1 2 3) '(4 5) q))
-       ;;                 ⇒ '((1 2 3 4 5))
+       (run* [q]
+         (appendᵒ '(1 2 3) '(4 5) q))
+                       ⇒ '((1 2 3 4 5))
 
-       ;; (run* [q]
-       ;;   (appendᵒ [1 2] [3 4] q))
-       ;;              ⇒ '((1 2 3 4))
+       (run* [q]
+         (appendᵒ [1 2] [3 4] q))
+                    ⇒ '((1 2 3 4))
 
-       ;; (run* [q]
-       ;;   (appendᵒ [1 2] q [1 2 3 4]))
-       ;;              ⇒ '((3 4))
+       (run* [q]
+         (appendᵒ [1 2] q [1 2 3 4]))
+                    ⇒ '((3 4))
 
        (run* [q]
          (appendᵒ q [3 4] [1 2 3 4]))
