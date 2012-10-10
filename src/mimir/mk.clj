@@ -103,12 +103,13 @@
 (defn run-internal [gs s]
   (lazy-seq
     (let [[g & gs] (flatten gs)
-          step (fn [s]
-                 (when-let [s (g s)]
-                   (concat (run-internal gs [(first s)])
-                           (run-internal gs (rest s)))))]
-      (if-not g s
-              (mapcat step (remove nil? s))))))
+          s (remove nil? s)]
+      (if-not g
+        s
+        (mapcat (fn [s]
+                  (when-let [s (g s)]
+                    (concat (run-internal gs [(first s)])
+                            (run-internal gs (rest s))))) s)))))
 
 (defn reify-goal [xs s]
   (let [xs (map #(reify % s) xs)
@@ -130,7 +131,6 @@
 (def fail (≡ false true))
 
 (defn consᵒ [a d l]
-  (debug "consᵒ" a d l)
   (if (var? l)
     (let [d (if (var? d) ['. d] d)]
       (≡ (cons a d) l))
@@ -138,17 +138,14 @@
      (≡ d (rest l))]))
 
 (defn firstᵒ [l a]
-  (debug "firstᵒ" l a)
   (fresh [d]
     (consᵒ a d l)))
 
 (defn restᵒ [l d]
-  (debug "restᵒ" l d)
   (fresh [a]
     (consᵒ a d l)))
 
 (defn memberᵒ [x ls]
-  (debug "memberᵒ" x ls)
   (fresh [a d]
     (consᵒ a d ls)
     (condᵉ
@@ -156,7 +153,6 @@
       ((memberᵒ x d)))))
 
 (defn appendᵒ [l1 l2 o]
-  (debug "appendᵒ" l1 l2 o)
   (condᵉ
    ((≡ l1 ()) (≡ l2 o))
    ((fresh [a d r]
