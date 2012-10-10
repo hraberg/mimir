@@ -178,9 +178,9 @@ When used inside rules, the bindings currently has to be referenced with a `?` p
 No performance tuning has been made - partly because there are no tests for this beast yet.
 
 
-#### Goals: miniKanren inspired subset
+#### Goals: mímirKanren
 
-Mimir contains some initial functionality to write goals, based on [miniKanren](https://github.com/hraberg/mimir/blob/master/src/mimir/mk.clj), using Mimir's [matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj) to unify. This was inspired by seeing David Nolen's [unsession](http://www.youtube.com/watch?v=A7de6pC-tnU) on [core.logic](https://github.com/clojure/core.logic/) at StrangeLoop 2012. There's currently no clear way to use this together with Mimir proper, early days.
+Mímir contains some initial functionality to write goals in ["mímirKanren"](https://github.com/hraberg/mimir/blob/master/src/mimir/mk.clj), based on [miniKanren](http://gradworks.umi.com/3380156.pdf), using Mimir's [matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj) to unify. This was inspired by seeing David Nolen's [unsession](http://www.youtube.com/watch?v=A7de6pC-tnU) on [core.logic](https://github.com/clojure/core.logic/) at StrangeLoop 2012. There's currently no clear way to use this together with Mimir proper, early days.
 
 
 ```clojure

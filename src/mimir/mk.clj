@@ -6,8 +6,7 @@
            [clojure.lang Symbol Seqable])
   (:refer-clojure :exclude [reify var? ==]))
 
-;; Loosely based on "Implementation I: Core miniKanren", Chapter 3 in Byrd.
-;; Uses Mímir's matcher to unify.
+;; mímirKanren: loosely based on "Implementation I: Core miniKanren", Chapter 3 in Byrd.
 
 (defprotocol MatchVar (match-var [this x acc]))
 
