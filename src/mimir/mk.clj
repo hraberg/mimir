@@ -125,8 +125,9 @@
     (postwalk cons-pairs-to-seqs (postwalk-replace vs xs))))
 
 (defmacro run* [[& x] & g]
-  `(binding [*match-var?* var?]
-     (run-internal (fresh [~@x] ~@g (partial reify-goal ~(vec x))) [{}])))
+  (let [g (postwalk-replace {'_ '(mimir.mk.LVar. (gensym '_))} g)]
+    `(binding [*match-var?* var?]
+       (run-internal (fresh [~@x] ~@g (partial reify-goal ~(vec x))) [{}]))))
 
 (defmacro run [n [& x] & g]
   `(take ~n (run* [~@x] ~@g)))

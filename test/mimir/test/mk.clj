@@ -229,8 +229,7 @@
        (run* [x q]
          (consᵒ 1 x q)
          (restᵒ q x))
-                    ⇒ '(–₀ (1 . –₀))
-                      ))
+                    ⇒ '(–₀ (1 . –₀))))
 
 (deftest memberᵒ-the-divergent
   (are [a _ e] (is (= a e))
@@ -306,5 +305,72 @@
        ;;                 ⇒ '#{() (1) (2) (1 2 3) (2 3) (3) (3 4) (4 5) (2 3 4)
        ;;                      (1 2 3 4 5) (1 2) (2 3 4 5) (4) (3 4 5) (1 2 3 4) (5)}
 ))
+
+(deftest anonymous-vars
+  (is (= (run* [q] (≡ q _)) '(–₀))))
+
+;; From https://github.com/swannodette/logic-tutorial
+(deftest zebra
+  (defn rightᵒ [x y l]
+    (condᵉ
+     ((prefixᵒ [x y] l))
+     ((fresh [d]
+       (restᵒ l d)
+       (rightᵒ x y d)))))
+
+  (defn nextᵒ [x y l]
+    (condᵉ
+     ((rightᵒ x y l))
+     ((rightᵒ y x l))))
+
+  (are [a _ e] (is (= a e))
+
+       (run* [q]
+         (rightᵒ 1 2 [1 2]))
+                       ⇒ '(–₀)
+
+       (run* [q]
+         (rightᵒ 1 2 [0 1 2 3]))
+                       ⇒ '(–₀)
+
+       (run* [q]
+         (rightᵒ 1 2 [1]))
+                       ⇒ '()
+
+       (run* [q]
+         (rightᵒ 1 2 [0 1 3 2 3]))
+                       ⇒ '()
+
+       (run* [q]
+         (nextᵒ 1 2 [3 2 1]))
+                       ⇒ '(–₀)
+
+       (run* [q]
+         (nextᵒ 1 2 [1 3 2]))
+                       ⇒ '())
+
+  ;; Doesn't run yet, small subsets "work".
+  ;; (is (= (run 1 [hs]
+  ;;             (≡ [_ _ [_ _ 'milk _ _] _ _] hs)
+  ;;             (firstᵒ hs ['norwegian _ _ _ _])
+  ;;             (nextᵒ ['norwegian _ _ _ _] [_ _ _ _ 'blue] hs)
+  ;;             (rightᵒ [_ _ _ _ 'ivory] [_ _ _ _ 'green] hs)
+  ;;             (memberᵒ ['englishman _ _ _ 'red] hs)
+  ;;             (memberᵒ [_ 'kools _ _ 'yellow] hs)
+  ;;             (memberᵒ ['spaniard _ _ 'dog _] hs)
+  ;;             (memberᵒ [_ _ 'coffee _ 'green] hs)
+  ;;             (memberᵒ ['ukrainian _ 'tea _ _] hs)
+  ;;             (memberᵒ [_ 'lucky-strikes 'oj _ _] hs)
+  ;;             (memberᵒ ['japanese 'parliaments _ _ _] hs)
+  ;;             (memberᵒ [_ 'oldgolds _ 'snails _] hs)
+  ;;             (nextᵒ [_ _ _ 'horse _] [_ 'kools _ _ _] hs)
+  ;;             (nextᵒ [_ _ _ 'fox _] [_ 'chesterfields _ _ _] hs))
+
+  ;;        '([[norwegian kools –₀ fox yellow]
+  ;;           [ukrainian chesterfields tea horse blue]
+  ;;           [englishman oldgolds milk snails red]
+  ;;           [spaniard lucky-strikes oj dog ivory]
+  ;;           [japanese parliaments coffee –₁ green]])))
+)
 
 (alter-var-root #'*match-var?* (constantly mv))
