@@ -58,11 +58,9 @@
     x))
 
 (defmacro unify [u v s]
-  `(binding [*match-var?* var?]
-     (let [u# (match-any ~(prepare-matcher u &env) ~(prepare-matcher v &env) ~s)
-           v# (match-any ~(prepare-matcher v &env) ~(prepare-matcher u &env) ~s)]
-       (debug "UNI" ~u ~v ~s u# v# (merge u# v#))
-       (merge u# v#))))
+  (let [[u v] (map #(prepare-matcher % &env) [u v])]
+    `(binding [*match-var?* var?]
+       (merge (match-any ~u ~v ~s) (match-any ~v ~u ~s)))))
 
 (def ^:private subscripts '[₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉])
 
