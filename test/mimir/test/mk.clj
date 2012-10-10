@@ -247,7 +247,21 @@
          (memberᵒ 3 q))
                     ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))))
 
+;; Partly from http://objectcommando.com/blog/2011/10/13/appendo-the-great/
 (deftest appendᵒ-the-great
+  (defn sublistᵒ [x y]
+    (fresh [a b c]
+      (appendᵒ a b y)
+      (appendᵒ x c b)))
+
+  (defn prefixᵒ [x y]
+    (fresh [a]
+      (appendᵒ x a y)))
+
+  (defn lastᵒ [x y]
+    (fresh [a]
+      (appendᵒ a [x] y)))
+
   (are [a _ e] (is (= a e))
 
        (run* [q]
@@ -272,6 +286,25 @@
                            (1) (2 3 4)
                            (1 2) (3 4)
                            (1 2 3) (4)
-                           (1 2 3 4) ())))
+                           (1 2 3 4) ())
+
+       (run* [q]
+         (prefixᵒ [1 2 3] q))
+                       ⇒ '((1 2 3 . –₀))
+
+       ;; StackOverflow
+       ;; (run 3 [q]
+       ;;   (lastᵒ "Hail to the king baby" q)
+       ;;   (prefixᵒ [1 2 3] q))
+       ;;                 ⇒ '((1 2 3 "Hail to the king baby")
+       ;;                     (1 2 3 –₀ "Hail to the king baby")
+       ;;                     (1 2 3 –₀ –₁ "Hail to the king baby"))
+
+       ;; Only returns prefixed lists
+       ;; (set (run* [q]
+       ;;   (sublistᵒ q [1 2 3 4 5])))
+       ;;                 ⇒ '#{() (1) (2) (1 2 3) (2 3) (3) (3 4) (4 5) (2 3 4)
+       ;;                      (1 2 3 4 5) (1 2) (2 3 4 5) (4) (3 4 5) (1 2 3 4) (5)}
+))
 
 (alter-var-root #'*match-var?* (constantly mv))
