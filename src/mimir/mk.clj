@@ -106,10 +106,9 @@
           s (remove nil? s)]
       (if-not g
         s
-        (mapcat (fn [s]
-                  (when-let [s (g s)]
-                    (concat (run-internal gs [(first s)])
-                            (run-internal gs (rest s))))) s)))))
+        (mapcat #(when-let [s (g %)]
+                   (concat (run-internal gs [(first s)])
+                           (run-internal gs (rest s)))) s)))))
 
 (defn reify-goal [xs s]
   (let [xs (map #(reify % s) xs)

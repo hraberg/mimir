@@ -61,7 +61,6 @@
   (def alwaysᵒ (anyᵒ succeed))
   (def neverᵒ (anyᵒ fail))
 
-  ;;StackOverflow
   (are [a _ e] (is (= a e))
 
        (run 5 [q]
@@ -80,7 +79,7 @@
         ;;                ⇒ '(1 2 3 1 2 3 1 2 3 1)
 
 
-       ;; These don't work
+       ;; StackOverflow
        ;; (run 5 [x]
        ;;   (condᵉ
        ;;    ((≡ true x))
