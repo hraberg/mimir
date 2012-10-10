@@ -100,6 +100,12 @@
   `(let [~@(mapcat (fn [x] `[~x (LVar. (gensym '~x))]) x)]
      [~@gs]))
 
+(defmacro project [[& x] & gs]
+  (let [a (gensym "a")]
+    `(fn project [~a]
+       (let [~@(mapcat (fn [x] `[~x (~a ~x)]) x)]
+         (run-internal ~(vec gs) [~a])))))
+
 (defn run-internal [gs s]
   (lazy-seq
     (let [[g & gs] (flatten gs)

@@ -97,6 +97,13 @@
        ;;       (neverᵒ)
        ;;       ((≡ 3 q))))))
        ;;            ⇒ '(1 2 3)
+
+       (run* [q]
+         (fresh [x]
+           (≡ 5 x)
+           (project [x]
+             (≡ (* x x) q))))
+                  ⇒ '(25)
   ))
 
 (deftest unification
