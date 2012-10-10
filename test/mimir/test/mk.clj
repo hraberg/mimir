@@ -58,24 +58,47 @@
       (g)
       ((anyᵒ g))))
 
+  (def alwaysᵒ (anyᵒ succeed))
+  (def neverᵒ (anyᵒ fail))
+
   ;;StackOverflow
-  ;; (are [a _ e] (is (= a e))
+  (are [a _ e] (is (= a e))
 
-  ;;      (sort (run 5 [q]
-  ;;              (condᵉ
-  ;;                ((anyᵒ (≡ false q)))
-  ;;                ((≡ true q)))))
-  ;;                    ⇒ '(false false false false true)
+       (run 5 [q]
+            (condᵉ
+             ((anyᵒ (≡ false q)))
+             ((≡ true q))))
+                  ⇒ '(false true false false false)
 
-  ;;       (run 10 [q]
-  ;;            (anyᵒ
-  ;;             (condᵉ
-  ;;              ((≡ 1 q))
-  ;;              ((≡ 2 q))
-  ;;              ((≡ 3 q)))))
-  ;;                      ⇒ '(1 2 3 1 2 3 1 2 3 1)
-  ;;      )
- )
+        ;; Does order matter? Returns nested interleave: (1 1 2 1 3 2 1 3 2 1)
+        ;; (run 10 [q]
+        ;;      (anyᵒ
+        ;;       (condᵉ
+        ;;        ((≡ 1 q))
+        ;;        ((≡ 2 q))
+        ;;        ((≡ 3 q)))))
+        ;;                ⇒ '(1 2 3 1 2 3 1 2 3 1)
+
+
+       ;; These don't work
+       ;; (run 5 [x]
+       ;;   (condᵉ
+       ;;    ((≡ true x))
+       ;;    ((≡ false x)))
+       ;;   alwaysᵒ
+       ;;   (≡ false x))
+       ;;            ⇒ '(false false false false false)
+
+       ;; (run 3 [q]
+       ;;   (condᵉ
+       ;;     ((≡ 1 q))
+       ;;     (neverᵒ)
+       ;;     ((condᵉ
+       ;;       ((≡ 2 q))
+       ;;       (neverᵒ)
+       ;;       ((≡ 3 q))))))
+       ;;            ⇒ '(1 2 3)
+  ))
 
 (deftest unification
   (are [a _ e] (is (= a e))
@@ -215,11 +238,9 @@
          (memberᵒ 7 [1 3 8 q]))
                     ⇒ '(7)
 
-       ;;StackOverflow
-       ;; (run 3 [q]
-       ;;   (memberᵒ 3 q))
-       ;;              ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))
-                      ))
+       (run 3 [q]
+         (memberᵒ 3 q))
+                    ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))))
 
 (deftest appendᵒ-the-great
   (are [a _ e] (is (= a e))

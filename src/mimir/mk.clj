@@ -42,7 +42,7 @@
                             (match-any this (acc x) acc)))
   Object
   (hashCode [this] (if name (.hashCode name) 0))
-  (equals [this o] (and (instance? LVar o) (= (.name this) (.name o)))))
+  (equals [this o] (and (instance? LVar o) (= (.name this) (.name ^LVar o)))))
 
 (defmethod print-method LVar [o ^Writer w]
   (.write w (str (.name o))))
@@ -79,39 +79,38 @@
         (recur v' s (conj check v'))))))
 
 (defmacro ≡ [u v]
-  `(fn [a#]
+  `(fn ≡ [a#]
      [(unify ~u ~v a#)]))
 (alias-macro ≡ ==)
 
 (defmacro ≠ [u v]
-  `(fn [a#]
+  `(fn ≠ [a#]
      [(when-not (seq (select-keys (unify ~u ~v a#) (keys a#))) a#)]))
 (alias-macro ≠ !=)
 
 (defn interleave-all [& colls]
-  (lazy-seq
-    (when-let [ss (seq (remove nil? (map seq colls)))]
-      (concat (map first ss) (apply interleave-all (map rest ss))))))
+  (when-let [ss (seq (remove nil? (map seq colls)))]
+    (concat (map first ss) (lazy-seq (apply interleave-all (map rest ss))))))
 
 (defmacro condᵉ [& gs]
   (let [a (gensym "a")]
-    `(fn [~a] (interleave-all ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
+    `(fn condᵉ [~a] (interleave-all ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
 (alias-macro condᵉ conde)
 
 (defmacro fresh [[& x] & gs]
   `(let [~@(mapcat (fn [x] `[~x (LVar. (gensym '~x))]) x)]
      [~@gs]))
 
-;; should be lazy for n to work
-(defn run-internal [[g & gs] s]
-  (debug "S" s)
-  (if (sequential? g)
-    (run-internal (concat g gs) s)
-    (if-not g
-      s
-      (if-let [s (seq (remove nil? (mapcat #(g %) s)))]
-        (recur gs s)
-        ()))))
+(defn run-internal [gs s]
+  (lazy-seq
+    (let [[g & gs] (flatten gs)
+          step (fn [s]
+                 (when s (let [s (g s)]
+                           (when s
+                             (concat (run-internal gs [(first s)])
+                                     (run-internal gs (rest s)))))))]
+      (if-not g s
+              (mapcat step s)))))
 
 (defn reify-goal [xs s]
   (let [xs (map #(reify % s) xs)
@@ -154,7 +153,7 @@
   (debug "memberᵒ" x ls)
   (fresh [a d]
     (consᵒ a d ls)
-    (conde
+    (condᵉ
       ((≡ a x))
       ((memberᵒ x d)))))
 
