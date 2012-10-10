@@ -38,7 +38,8 @@
   MatchVar
   (match-var [x this acc] (match-any x this acc))
   MatchSeq
-  (match-seq [x this acc] (match-any this (acc x) acc))
+  (match-seq [x this acc] (when ((every-pred sequential? seq) (acc x))
+                            (match-any this (acc x) acc)))
   Object
   (hashCode [this] (if name (.hashCode name) 0))
   (equals [this o] (and (instance? LVar o) (= (.name this) (.name o)))))
@@ -149,7 +150,6 @@
   (fresh [a]
     (consᵒ a d l)))
 
-; these doesn't work
 (defn memberᵒ [x ls]
   (debug "memberᵒ" x ls)
   (fresh [a d]

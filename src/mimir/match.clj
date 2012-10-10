@@ -161,7 +161,7 @@
                                                      acc
                                                      (match-seq rst (repeat (count rst)
                                                                             (first ps)) acc))]
-                                      (bind-vars rst (first ps) acc)))
+                                      (bind-vars (or rst ()) (first ps) acc)))
                                   (when-let [acc (match-any p y acc)]
                                     (recur ps ys (bind-vars y p acc)))))))))
 

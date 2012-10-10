@@ -94,6 +94,7 @@
          (≡ 5 q)
          (≡ 4 q)) ⇒ ()
 
+      ;; works, but not in suite with *match-var*? mess
       ;; (run* [q]
       ;;    (fresh [x y]
       ;;      (≡ [x 2] [1 y])
@@ -214,6 +215,7 @@
          (memberᵒ 7 [1 3 8 q]))
                     ⇒ '(7)
 
+       ;;StackOverflow
        ;; (run 3 [q]
        ;;   (memberᵒ 3 q))
        ;;              ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))
@@ -238,14 +240,12 @@
          (appendᵒ q [3 4] [1 2 3 4]))
                        ⇒ '((1 2))
 
-       ;; last nil/() gets pruned
-       ;; (run* [w q]
-       ;;   (appendᵒ w q [1 2 3 4]))
-       ;;                 ⇒ '(() (1 2 3 4)
-       ;;                     (1) (2 3 4)
-       ;;                     (1 2) (3 4)
-       ;;                     (1 2 3) (4)
-       ;;                     (1 2 3 4) ())
-                         ))
+       (run* [w q]
+         (appendᵒ w q [1 2 3 4]))
+                       ⇒ '(() (1 2 3 4)
+                           (1) (2 3 4)
+                           (1 2) (3 4)
+                           (1 2 3) (4)
+                           (1 2 3 4) ())))
 
 (alter-var-root #'*match-var?* (constantly mv))
