@@ -206,11 +206,11 @@ Mímir contains some initial functionality to write goals in ["mímirKanren"](ht
 
 [OPS5](https://github.com/briangu/OPS5) "This Common Lisp version of OPS5 is in the public domain.  It is based in part on based on a Franz Lisp implementation done by Charles L. Forgy"
 
-[Relational Programming in miniKanren: Techniques, Applications, and Implementations](http://gradworks.umi.com/3380156.pdf) Byrd, 2009
+[Relational Programming in miniKanren: Techniques, Applications, and Implementations](http://gradworks.umi.com/3380156.pdf) William Byrd, 2009
 
-[Transliterating Prolog into Scheme](http://www.cs.indiana.edu/pub/techreports/TR182.pdf) Felleisen, 1985. Great, short paper, the "Prolog" fits on one page. Most my projects could be said to have been inspired by this transliterate style (into Clojure) - if only I had read it earlier.
+[Transliterating Prolog into Scheme](http://www.cs.indiana.edu/pub/techreports/TR182.pdf) Matthias Felleisen, 1985. Great, short paper, the "Prolog" fits on one page. Most my projects could be said to have been inspired by this transliterate style (into Clojure) - if only I had read it earlier.
 
-[core.logic - A Tutorial Reconstruction](http://www.youtube.com/watch?v=A7de6pC-tnU) Nolen, 2012
+[core.logic - A Tutorial Reconstruction](http://www.youtube.com/watch?v=A7de6pC-tnU) David Nolen, 2012
 
 [Rule Solver: Constraint Programming with OpenRules](http://openrules.com/pdf/RulesSolver.UserManual.pdf) Jacob Feldman, 2012
 
