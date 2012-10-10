@@ -105,12 +105,11 @@
   (lazy-seq
     (let [[g & gs] (flatten gs)
           step (fn [s]
-                 (when s (let [s (g s)]
-                           (when s
-                             (concat (run-internal gs [(first s)])
-                                     (run-internal gs (rest s)))))))]
+                 (when-let [s (g s)]
+                   (concat (run-internal gs [(first s)])
+                           (run-internal gs (rest s)))))]
       (if-not g s
-              (mapcat step s)))))
+              (mapcat step (remove nil? s))))))
 
 (defn reify-goal [xs s]
   (let [xs (map #(reify % s) xs)

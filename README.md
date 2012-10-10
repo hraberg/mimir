@@ -178,10 +178,25 @@ When used inside rules, the bindings currently has to be referenced with a `?` p
 No performance tuning has been made - partly because there are no tests for this beast yet.
 
 
-#### miniKanren subset
+#### Goals: miniKanren inspired subset
 
-Mimir contains a small subset of [miniKanren](https://github.com/hraberg/mimir/blob/master/src/mimir/mk.clj), using Mimir's [matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj) to unify. This was inspired by seeing David Nolen's [unsession](http://www.youtube.com/watch?v=A7de6pC-tnU) about [core.logic](https://github.com/clojure/core.logic/) at StrangeLoop 2012. There's currently no clear way to use this together with Mimir proper, early days.
+Mimir contains some initial functionality to write goals, based on [miniKanren](https://github.com/hraberg/mimir/blob/master/src/mimir/mk.clj), using Mimir's [matcher](https://github.com/hraberg/mimir/blob/master/src/mimir/match.clj) to unify. This was inspired by seeing David Nolen's [unsession](http://www.youtube.com/watch?v=A7de6pC-tnU) on [core.logic](https://github.com/clojure/core.logic/) at StrangeLoop 2012. There's currently no clear way to use this together with Mimir proper, early days.
 
+
+```clojure
+(run* [q w z]
+  (consᵒ q w z)
+  (firstᵒ z 1))
+           ⇒ '(1 –₀ (1 . –₀))
+
+(run 3 [q]
+  (memberᵒ 3 q))
+           ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))
+
+(run* [q]
+  (appendᵒ [1 2] q [1 2 3 4]))
+           ⇒ '((3 4))
+```
 
 ## References
 
