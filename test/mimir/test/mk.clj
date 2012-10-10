@@ -103,8 +103,7 @@
            (≡ 5 x)
            (project [x]
              (≡ (* x x) q))))
-                  ⇒ '(25)
-  ))
+                  ⇒ '(25)))
 
 (deftest unification
   (are [a _ e] (is (= a e))
