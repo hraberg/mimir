@@ -93,7 +93,8 @@
 
 (defmacro condᵉ [& gs]
   (let [a (gensym "a")]
-    `(fn condᵉ [~a] (interleave-all ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
+    `(fn condᵉ [~a]
+       (interleave-all ~@(map #(do `(run-internal ~(vec %) [~a])) gs)))))
 (alias-macro condᵉ conde)
 
 (defmacro fresh [[& x] & gs]
