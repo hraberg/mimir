@@ -2,7 +2,7 @@
   :description "Mímir is an experimental rule engine written in Clojure"
   :repositories {"sonatype snapshots"
                  "https://oss.sonatype.org/content/repositories/snapshots/"}
-  :dependencies [[org.clojure/clojure "1.5.0-alpha3"]
+  :dependencies [[org.clojure/clojure "1.5.0-alpha6"]
                  [log4j/log4j "1.2.16"]
                  [org.clojure/tools.logging "0.2.3"]
                  [org.codehaus.jsr166-mirror/jsr166y "1.7.0"]]
