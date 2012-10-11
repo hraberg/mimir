@@ -212,6 +212,8 @@ Mímir contains some initial functionality to write goals in ["mímirKanren"](ht
 
 [core.logic - A Tutorial Reconstruction](http://www.youtube.com/watch?v=A7de6pC-tnU) David Nolen, 2012
 
+[HANSEI as a Declarative Logic Programming Language](http://okmij.org/ftp/kakuritu/logic-programming.html) Oleg Kiselyov, 2010-12
+
 [Rule Solver: Constraint Programming with OpenRules](http://openrules.com/pdf/RulesSolver.UserManual.pdf) Jacob Feldman, 2012
 
 * [JSR-331](http://jcp.org/aboutJava/communityprocess/final/jsr331/index.html)
