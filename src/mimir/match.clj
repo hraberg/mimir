@@ -130,7 +130,13 @@
 
 (extend-type Keyword
   MatchAny
-  (match-any [this x acc] (when (or (contains? x this) (= x this))
+  (match-any [this x acc] (when (or (and (coll? x)
+                                         (contains? x this))
+                                    (= x this))
+                            (bind-vars x this acc)))
+
+  MatchMap
+  (match-map [this x acc] (when (contains? x this)
                             (bind-vars x this acc))))
 
 (extend-type IPersistentSet

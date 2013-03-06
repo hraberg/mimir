@@ -408,8 +408,11 @@
   ([] (run-once (working-memory) (productions)))
   ([wm productions]
      (->> productions (sort-by salience) vec
-          (r/mapcat #(% wm {}))
-          (fold-into vector))))
+          ;; This is not thread safe.
+          ;; (r/mapcat #(% wm {}))
+          ;; (fold-into vector)
+          (mapcat #(% wm {}))
+          doall)))
 
 (defn run*
   ([] (repeatedly run-once)))

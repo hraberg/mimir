@@ -8,7 +8,7 @@
 (def mv *match-var?*)
 (alter-var-root #'*match-var?* (constantly var?))
 
-(deftest introduction-to-core-minikanren
+(deftest ^:mk introduction-to-core-minikanren
   (are [a _ e] (is (= a e))
 
        (run 1 [q]
@@ -105,7 +105,7 @@
              (≡ (* x x) q))))
                   ⇒ '(25)))
 
-(deftest unification
+(deftest ^:mk unification
   (are [a _ e] (is (= a e))
 
        (run* [q]
@@ -142,7 +142,7 @@
           (≡ q [x y])))
                   ⇒ '([1 1])))
 
-(deftest consᵒ-the-magnificent
+(deftest ^:mk consᵒ-the-magnificent
   (are [a _ e] (is (= a e))
 
        (run* [q]
@@ -231,7 +231,7 @@
          (restᵒ q x))
                     ⇒ '(–₀ (1 . –₀))))
 
-(deftest memberᵒ-the-divergent
+(deftest ^:mk memberᵒ-the-divergent
   (are [a _ e] (is (= a e))
 
        (run* [q]
@@ -247,7 +247,7 @@
                     ⇒ '((3 . –₀) (–₀ 3 . –₁) (–₀ –₁ 3 . –₂))))
 
 ;; Partly from http://objectcommando.com/blog/2011/10/13/appendo-the-great/
-(deftest appendᵒ-the-great
+(deftest ^:mk appendᵒ-the-great
   (defn sublistᵒ [x y]
     (fresh [a b c]
       (appendᵒ a b y)
@@ -306,11 +306,11 @@
        ;;                      (1 2 3 4 5) (1 2) (2 3 4 5) (4) (3 4 5) (1 2 3 4) (5)}
 ))
 
-(deftest anonymous-vars
+(deftest ^:mk anonymous-vars
   (is (= (run* [q] (≡ q _)) '(–₀))))
 
 ;; From https://github.com/swannodette/logic-tutorial
-(deftest zebra
+(deftest ^:mk zebra
   (defn rightᵒ [x y l]
     (condᵉ
      ((prefixᵒ [x y] l))

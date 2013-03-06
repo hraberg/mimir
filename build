@@ -1,6 +1,9 @@
 #!/bin/bash -e
 
-rm -rf classes *.jar
+rm -rf target
 
-lein deps
-lein do uberjar, difftest, run -m marginalia.main --file index.html
+# There's no pain in this dojo!
+# mímirKanren isn't properly integrated and redefines MatchVar for Symbol.
+# Needs hard reload to overcome, bound to be a better way, :test-selectors still seems to load the ns.
+tests=$(cd test; find mimir -iname "*.clj" | grep -v mk.clj | sed s/.clj// | tr /_ .-)
+lein do difftest $tests, difftest :mk, uberjar, run -m marginalia.main --file index.html
