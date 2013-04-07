@@ -432,7 +432,7 @@
 (defn reset []
   (reset! *net* (create-net)))
 
-; rule writing fns
+;; rule writing fns
 
 (defmacro assert
   ([fact]
