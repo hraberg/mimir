@@ -517,7 +517,7 @@
 
 (defn -main [& args]
   (println)
-  (println "Welcome to Mímir |" (version) "| Copyright © 2012 Håkan Råberg")
+  (println "Welcome to Mímir |" (version) "| Copyright © 2012-13 Håkan Råberg")
   (println)
   (require 'clojure.main)
   (clojure.main/repl :init #(in-ns 'mimir.well)))

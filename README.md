@@ -247,7 +247,7 @@ The letter `í` in Mímir can conveniently be typed using `C-x 8 ' i` in Emacs.
 
 ## License
 
-Mímir, Copyright © 2012 Håkan Råberg
+Mímir, Copyright © 2012-2013 Håkan Råberg
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
