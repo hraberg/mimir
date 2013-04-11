@@ -2,6 +2,8 @@
   (:use [mimir.parse]))
 
 ;; This is not yet a real test, just experiments and examples in various broken states.
+;; This grammar is from the "Transforming the tree" section of Instaparser:
+;; https://github.com/Engelberg/instaparse#transforming-the-tree
 
 (def expression (create-parser
                  :expr      :add-sub
