@@ -48,6 +48,7 @@
                      :decimal   #"[0-9]+" read-string))
 
 ;; This gets wrong precedence, regardless of using choice / OrderedSet or not. So something else.
+;; Should return 33.
 (peg-expression "1-2/(3-4)+5*6")
 
 (peg-expression "2+5*2")
@@ -97,11 +98,19 @@
                       :expr   #{[:term #"[+-]" :expr]
                                 :term} op
                       :term   #{[:factor #"[*/]" :term]
+                                ["(" :expr ")"]
                                 :factor} op
                       :factor #{#"[0-9]+" #"\w+"} #'*dynamic-reader*))
 
 (let [x 1 y 3]
   (right-recursive "x - 2 * y" :dynamic-reader (dynamic-reader)))
+
+;; Extended the grammar to support parenthesis, now this fails the same way as peg-expression:
+(right-recursive "1-2/(3-4)+5*6")
+;; Gives -27, should be 33.
+
+;; But the tree is much nicer, and could hint to the answer:
+(right-recursive "1-2/(3-4)+5*6" :grammar-actions false :suppress-tags false)
 
 ;; Check that memoization actually works.
 (comment

@@ -215,7 +215,7 @@
     `#(eval `(let [~'~locals ~~locals]
                ~(read-string %)))))
 
-(def ^:dynamic *dynamic-reader*)
+(def ^:dynamic *dynamic-reader* read-string)
 
 (defn action? [x]
   ((some-fn fn? var?) x))
