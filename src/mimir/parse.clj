@@ -26,8 +26,7 @@
 (def ^:dynamic *capture-string-literals* false)
 (def ^:dynamic *pre-delimiter* #"\s*")
 (def ^:dynamic *post-delimiter* #"(:?\s+|$)")
-(def ^:dynamic *offset* 0)
-(def ^:dynamic *rule* nil)
+(def ^:dynamic *first-line* 1)
 (def ^:dynamic *default-result* [])
 (def ^:dynamic *token-fn* conj)
 (def ^:dynamic *suppress-tags* false)
@@ -36,10 +35,15 @@
 (def ^:dynamic *grammar-actions* true)
 (def ^:dynamic *alternatives-rank* (comp count flatten :result))
 (def ^:dynamic *grammar* {})
-(def ^:dynamic *failure-grammar* {:no-match [#"\S*" #(throw (IllegalStateException. (str "Don't know how to parse: " %)))]})
+(def ^:dynamic *failure-grammar* {:no-match [#"\S*" #(throw (IllegalStateException.
+                                                             (format "Don't know how to parse: '%s' at %d:%d"
+                                                                     % (:line *current-state*) (column *current-state*))))]})
 (def ^:dynamic *start-rule* first)
 (def ^:dynamic *extract-result* (comp first :result))
-(def ^:dynamic *rules-seen-at-point* #{})
+
+(def ^:private ^:dynamic *rule* nil)
+(def ^:private ^:dynamic *current-state* nil)
+(def ^:private ^:dynamic *rules-seen-at-point* #{})
 
 (defn maybe-singleton
   ([])
@@ -67,21 +71,31 @@
       suppressed-defintion
       r)))
 
-(defrecord StringParser [string offset token result])
+(defrecord StringParser [string offset line token result])
 
 (defn string-parser
   ([s] (if (instance? StringParser s) s (string-parser s *default-result*)))
-  ([s result] (StringParser. s 0 nil result)))
+  ([s result] (StringParser. s 0 *first-line* nil result)))
 
 (defn at-end? [{:keys [string offset] :as in}]
   (= offset (count string)))
 
-(defn try-parse [{:keys [string offset result] :as in} ^Pattern re]
+(defn column [{:keys [string offset] :as in}]
+  (let [eol (.lastIndexOf ^String string (int \newline) (int (dec offset)))]
+    (if (= -1 eol)
+      offset
+      (dec (- offset eol)))))
+
+(defn lines [s]
+  (count (re-seq #"\n" s)))
+
+(defn try-parse [{:keys [string offset result line] :as in} ^Pattern re]
   (when in
     (let [m (re-matcher re (subs string offset))]
       (when (.lookingAt m)
         (assoc in
           :offset (+ offset (.end m 0))
+          :line (+ line (lines (.group m 0)))
           :token (.group m 0))))))
 
 (defn try-parse-skip-delimiter [in m]
@@ -96,7 +110,7 @@
 (defn next-token [in m capture?]
   (when-let [{:keys [token offset] :as in} (try-parse-skip-delimiter in m)]
     (assoc (if capture?
-             (binding [*offset* offset]
+             (binding [*current-state* in]
                (->  in
                     (update-in [:result] *token-fn* token)))
              in) :token nil)))
@@ -147,7 +161,8 @@
             (letfn [(parse-one [in]
                       (let [current-result (:result in)]
                         (when-let [result (parse rule (assoc in :result *default-result*))]
-                          (binding [*rule* this]
+                          (binding [*rule* this
+                                    *current-state* in]
                             (update-in result [:result]
                                        #(*token-fn* current-result
                                                     (*node-fn* (try
@@ -231,12 +246,18 @@
                                                           [rule])])
                                 (partition 2 rules)))))
 
+(defn parser-option [option]
+  (letfn [(unknown-option [option] (throw (IllegalArgumentException. (str "Unknown option: " option))))]
+    (if (keyword? option)
+      (if-let [o (resolve (symbol (str "*" (name option) "*")))]
+        (if (:private (meta o))
+          (unknown-option option)
+          o)
+        (unknown-option option))
+      option)))
+
 (defn parser-options [options]
-  (into {} (map (fn [[k v]]
-                  [(if (keyword? k)
-                     (or (resolve (symbol (str "*" (name k) "*")))
-                         (throw (IllegalArgumentException. (str "Unknown option: " k))))
-                     k) v]) options)))
+  (into {} (map (fn [[k v]] [(parser-option k) v]) options)))
 
 ;; Starts getting clunky, holding off to macrofiy it as this is not the core issue.
 (defn create-parser
