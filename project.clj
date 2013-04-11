@@ -3,6 +3,7 @@
   :repositories {"sonatype snapshots"
                  "https://oss.sonatype.org/content/repositories/snapshots/"}
   :dependencies [[org.clojure/clojure "1.5.1"]
+                 [org.flatland/ordered "1.5.1"]
                  [log4j/log4j "1.2.16"]
                  [org.clojure/tools.logging "0.2.3"]]
   :profiles {:dev {:dependencies [[marginalia "0.7.1"]
