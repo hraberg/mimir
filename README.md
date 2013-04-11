@@ -222,25 +222,6 @@ See [`mimir.test.parse`](https://github.com/hraberg/mimir/blob/master/test/mimir
 ```
 This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.edu/class/fall2002/cmsc430/lec4.pdf) form Univeristy of Maryland.
 
-```clojure
-(def ambiguous
-  (create-parser
-   {:capture-string-literals true}     ;; Literal strings are dropped by default.
-
-   :s    #{[:np :vp] [:s :pp]}         ;; Vectors are sequential matches.
-   :pp   [:prep :np]
-   :det  #{"a" "the"}
-   :verb "saw"
-   :np   #{:noun [:det :noun] [:np :pp]}
-   :vp   [:verb :np]
-   :noun #{"i" "man" "park" "bat"}
-   :prep #{"in" "with"}))
-
-(ambiguous "i saw a man in the park with a bat")
-;=> [:s [:np [:noun "i"]] [:vp [:verb "saw"] [:np [:np [:det "a"] [:noun "man"]] [:pp [:prep "in"] [:np [:np [:det "the"] [:noun "park"]] [:pp [:prep "with"] [:np [:det "a"] [:noun "bat"]]]]]]]]
-```
-This example is from [Parser Combinators for Ambiguous Left-Recursive Grammars](http://cs.uwindsor.ca/~richard/PUBLICATIONS/PADL_08.pdf) Richard A. Frost et al, 2008.
-
 
 ## References
 
