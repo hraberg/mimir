@@ -205,39 +205,41 @@ Mímir now also contains an [experimental parser](https://github.com/hraberg/mim
 See [`mimir.test.parse`](https://github.com/hraberg/mimir/blob/master/test/mimir/test/parse.clj) for examples (but an absolute lack of proper tests). Many things doesn't work properly yet, and the theoretical foundations are shaky to say the least. It doesn't support left-recursion - and a few things are broken. I'm currently backing off to read a few papers, so the references list will hopefully be updated in a few days, once I understand more about what I don't understand.
 
 ```clojure
-(def right-recursive (create-parser                       ;; This returns a parser function.
-                      {:suppress-tags true}               ;; Options, can also be given when invoking, see below.
+(def right-recursive
+  (create-parser                       ;; This returns a parser function.
+   {:suppress-tags true}               ;; Options, can also be given when invoking, see below.
 
-                      :goal   :expr                       ;; A rule which is just an alias.
-                      :expr   #{[:term #"[+-]" :expr]     ;; Sets are (unordered) choices. Keywords refer to rules.
-                                :term} op                 ;; op is the action, invoked with the result of the parse.
-                      :term   #{[:factor #"[*/]" :term]
-                                :factor} op               ;; op resolves the regexp match to clojure.core/* etc.
-                      :factor #{#"[0-9]+" #"\w+"} #'*dynamic-reader*))
+   :goal   :expr                       ;; A rule which is just an alias.
+   :expr   #{[:term #"[+-]" :expr]     ;; Sets are (unordered) choices. Keywords refer to rules.
+             :term} op                 ;; op is the action, invoked with the result of the parse.
+   :term   #{[:factor #"[*/]" :term]
+             :factor} op               ;; op resolves the regexp match to clojure.core/* etc.
+   :factor #{#"[0-9]+" #"\w+"} #'*dynamic-reader*))
 
 (let [x 1 y 3]
   (right-recursive "x - 2 * y" :dynamic-reader (dynamic-reader))) ;; dynamic-reader wraps read-string + local scope.
 ;=> -5
 ```
-This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.edu/class/fall2002/cmsc430/lec4.pdf).
+This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.edu/class/fall2002/cmsc430/lec4.pdf) form Univeristy of Maryland.
 
 ```clojure
-(def ambiguous (create-parser
-                {:capture-string-literals true}
+(def ambiguous
+  (create-parser
+   {:capture-string-literals true}
 
-                :s    #{[:np :vp] [:s :pp]}
-                :pp   [:prep :np]
-                :det  #{"a" "the"}
-                :verb "saw"
-                :np   #{:noun [:det :noun] [:np :pp]}
-                :vp   [:verb :np]
-                :noun #{"i" "man" "park" "bat"}
-                :prep #{"in" "with"}))
+   :s    #{[:np :vp] [:s :pp]}
+   :pp   [:prep :np]
+   :det  #{"a" "the"}
+   :verb "saw"
+   :np   #{:noun [:det :noun] [:np :pp]}
+   :vp   [:verb :np]
+   :noun #{"i" "man" "park" "bat"}
+   :prep #{"in" "with"}))
 
 (ambiguous "i saw a man in the park with a bat")
 ;=> [:s [:np [:noun "i"]] [:vp [:verb "saw"] [:np [:np [:det "a"] [:noun "man"]] [:pp [:prep "in"] [:np [:np [:det "the"] [:noun "park"]] [:pp [:prep "with"] [:np [:det "a"] [:noun "bat"]]]]]]]]
 ```
-This example is from [Parser Combinators for Ambiguous Left-Recursive Grammars](http://cs.uwindsor.ca/~richard/PUBLICATIONS/PADL_08.pdf).
+This example is from [Parser Combinators for Ambiguous Left-Recursive Grammars](http://cs.uwindsor.ca/~richard/PUBLICATIONS/PADL_08.pdf) Richard A. Frost et al, 2008.
 
 
 ## References
