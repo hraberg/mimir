@@ -225,9 +225,9 @@ This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.
 ```clojure
 (def ambiguous
   (create-parser
-   {:capture-string-literals true}
+   {:capture-string-literals true}     ;; Literal strings are dropped by default.
 
-   :s    #{[:np :vp] [:s :pp]}
+   :s    #{[:np :vp] [:s :pp]}         ;; Vectors are sequential matchs.
    :pp   [:prep :np]
    :det  #{"a" "the"}
    :verb "saw"
