@@ -102,10 +102,10 @@
                       :term   #{[:factor #"[*/]" :term]
                                 ["(" :expr ")"]
                                 :factor} op
-                      :factor #{#"[0-9]+" #"\w+"} #'*dynamic-reader*))
+                      :factor #{#"[0-9]+" #"\w+"} #'*read-string*))
 
 (let [x 1 y 3]
-  (right-recursive "x - 2 * y" :dynamic-reader (dynamic-reader)))
+  (right-recursive "x - 2 * y" :read-string (dynamic-reader)))
 
 ;; Extended the grammar to support parenthesis, now this fails the same way as peg-expression:
 (right-recursive "1-2/(3-4)+5*6")
@@ -117,7 +117,7 @@
 ;; Check that memoization actually works.
 (comment
   (let [x 1 y 3]
-    (time (right-recursive "x - 2 * y" :dynamic-reader (dynamic-reader) :memoize false))))
+    (time (right-recursive "x - 2 * y" :read-string (dynamic-reader) :memoize false))))
 
 ;; "As example use of our combinators, consider the following ambiguous grammar from Tomita (1986)."
 ;; http://cs.uwindsor.ca/~richard/PUBLICATIONS/PADL_08.pdf

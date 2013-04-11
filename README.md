@@ -214,10 +214,10 @@ See [`mimir.test.parse`](https://github.com/hraberg/mimir/blob/master/test/mimir
              :term} op                 ;; op is the action, invoked with the result of the parse.
    :term   #{[:factor #"[*/]" :term]
              :factor} op               ;; op resolves the regexp match to clojure.core/* etc.
-   :factor #{#"[0-9]+" #"\w+"} #'*dynamic-reader*))
+   :factor #{#"[0-9]+" #"\w+"} #'*read-string*))
 
 (let [x 1 y 3]
-  (right-recursive "x - 2 * y" :dynamic-reader (dynamic-reader))) ;; dynamic-reader wraps read-string + local scope.
+  (right-recursive "x - 2 * y" :read-string (dynamic-reader))) ;; dynamic-reader wraps read-string + local scope.
 ;=> -5
 ```
 This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.edu/class/fall2002/cmsc430/lec4.pdf) form Univeristy of Maryland.

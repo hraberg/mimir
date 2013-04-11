@@ -40,6 +40,7 @@
                                                                      % (:line *current-state*) (column *current-state*))))]})
 (def ^:dynamic *start-rule* first)
 (def ^:dynamic *extract-result* (comp first :result))
+(def ^:dynamic *read-string* read-string)
 
 (def ^:private ^:dynamic *rule* nil)
 (def ^:private ^:dynamic *current-state* nil)
@@ -229,8 +230,6 @@
   (let [locals (vec (keys &env))]
     `#(eval `(let [~'~locals ~~locals]
                ~(read-string %)))))
-
-(def ^:dynamic *dynamic-reader* read-string)
 
 (defn action? [x]
   ((some-fn fn? var?) x))
