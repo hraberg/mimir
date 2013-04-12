@@ -19,7 +19,11 @@
 
 (set! *warn-on-reflection* true)
 
-(declare node maybe-singleton depth)
+(declare node maybe-singleton depth column)
+
+(def ^:private ^:dynamic *rule* nil)
+(def ^:private ^:dynamic *current-state* nil)
+(def ^:private ^:dynamic *rules-seen-at-point* #{})
 
 (def ^:dynamic *allow-split-tokens* true) ;; Overrides post-delimiter.
 (def ^:dynamic *memoize* true)
@@ -41,10 +45,6 @@
 (def ^:dynamic *start-rule* first)
 (def ^:dynamic *extract-result* (comp first :result))
 (def ^:dynamic *read-string* read-string)
-
-(def ^:private ^:dynamic *rule* nil)
-(def ^:private ^:dynamic *current-state* nil)
-(def ^:private ^:dynamic *rules-seen-at-point* #{})
 
 (defn maybe-singleton
   ([])
