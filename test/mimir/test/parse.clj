@@ -261,7 +261,7 @@
 ;; Some places could be simplified using regular expressions, but trying to ensure it works first.
 (def peg (create-parser
           {:suppress-tags true
-           :post-delimiter #""}
+           :pre-delimiter #""}
 
           ;; # Hierarchical syntax
           :Grammar    [:Spacing :Definition+ :EndOfFile]
@@ -275,10 +275,11 @@
                                                              ([[p] x]
                                                                 (list ({"!" `!
                                                                         "&" `&} p) x)))
-          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))] (fn [x [s]]
-                                                                          (list ({"+" `take+
-                                                                                  "*" `take*
-                                                                                  "?" `take?} s) x))
+          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))] (fn ([x] x)
+                                                                          ([x [s]]
+                                                                             (list ({"+" `take+
+                                                                                     "*" `take*
+                                                                                     "?" `take?} s) x)))
           :Primary    (choice [:Identifier (! :LEFTARROW)]
                               [:OPEN :Expression :CLOSE]
                               :Literal :Class :DOT) (fn ([x] x) ([open x close] x))
