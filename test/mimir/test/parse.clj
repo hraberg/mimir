@@ -146,12 +146,12 @@
 
 ;; As seen above, named after the site, not the exception.
 (def stackoverflow (create-parser
-                      {:suppress-tags true}
+                    {:suppress-tags true}
 
-                      :expr    [:term (take* [#"[+-]" :term])] expr-eval
-                      :term    [:factor  (take* [#"[*/]" :factor])] expr-eval
-                      :factor  #{:integer ["(" :expr ")"]}
-                      :integer #"[0-9]+" read-string))
+                    :expr    [:term (take* [#"[+-]" :term])] expr-eval
+                    :term    [:factor  (take* [#"[*/]" :factor])] expr-eval
+                    :factor  #{:integer ["(" :expr ")"]}
+                    :integer #"[0-9]+" read-string))
 
 ;; Gives 2 as expected:
 (stackoverflow "1-2+3")
