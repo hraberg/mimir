@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(declare node maybe-singleton)
+(declare node maybe-singleton depth)
 
 (def ^:dynamic *allow-split-tokens* true) ;; Overrides post-delimiter.
 (def ^:dynamic *memoize* true)
@@ -33,7 +33,7 @@
 (def ^:dynamic *node-fn* #'node)
 (def ^:dynamic *default-action* #'maybe-singleton)
 (def ^:dynamic *grammar-actions* true)
-(def ^:dynamic *alternatives-rank* (comp count flatten :result))
+(def ^:dynamic *alternatives-rank* #'depth)
 (def ^:dynamic *grammar* {})
 (def ^:dynamic *failure-grammar* {:no-match [#"\S*" #(throw (IllegalStateException.
                                                              (format "Don't know how to parse: '%s' at %d:%d"
@@ -65,6 +65,9 @@
       (if (and (sequential? args) (not (node? args)))
         (vec (cons *rule* args))
         [*rule* args]))))
+
+(defn depth [x]
+  (if (node? x) (inc (apply max (map depth x))) 0))
 
 (defn suppressed-defintion? [r]
   (let [suppressed-defintion (keyword (str "<" (name r) ">"))]
