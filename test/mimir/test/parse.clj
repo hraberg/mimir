@@ -150,8 +150,6 @@
                       :integer #"[0-9]+" read-string))
 
 ;; Gives 2 as expected:
-(stackoverflow "1-2")
-
 (stackoverflow "1-2+3")
 (stackoverflow "1-2+3" :grammar-actions false :suppress-tags false)
 ;; Gives -4 as it should:
