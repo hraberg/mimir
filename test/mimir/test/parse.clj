@@ -266,7 +266,7 @@
            :actions {:Grammar (fn [& defs] (apply grammar (apply concat defs)))
                      :Expression (fn [x & xs] (cons `choice  (apply maybe-singleton (cons x xs))))
                      :Prefix (fn [[p] x] (list ({"!" `! "&" `&} p) x))
-                     :Suffix (fn  [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
+                     :Suffix (fn [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
                      :Primary (fn [open x close] x)
                      :Identifier (comp keyword str)}}
 
