@@ -37,6 +37,7 @@
 (def ^:dynamic *suppress-tags* false)
 (def ^:dynamic *node-fn* #'node)
 (def ^:dynamic *default-action* #'maybe-singleton)
+(def ^:dynamic *actions* {})
 (def ^:dynamic *grammar-actions* true)
 (def ^:dynamic *alternatives-rank* #'depth)
 (def ^:dynamic *grammar* {})
@@ -50,7 +51,8 @@
 (defn maybe-singleton
   ([])
   ([x] x)
-  ([x & args] (vec (cons x args))))
+  ([x & args] (when-let [v (seq (remove nil? (cons x args)))]
+                (vec v))))
 
 (defn suppressed-rule? [r]
   (when-let [[ _ r] (re-find #"^<(.+)>$" (name r))]
@@ -207,7 +209,9 @@
                             (update-in result [:result]
                                        #(*token-fn* current-result
                                                     (*node-fn* (try
-                                                                 (apply (or (when *grammar-actions* action)
+                                                                 (apply (or (when *grammar-actions*
+                                                                              (or (this *actions*)
+                                                                                  action))
                                                                             *default-action*) %)
                                                                  (catch ArityException _
                                                                    (apply *default-action* %))))))))))]

@@ -217,3 +217,110 @@
                  :world "World"))
 
 (helloworld "Hello Hello World")
+
+;; Figure 1. PEG formally describing its own ASCII syntax
+;; from Parsing Expression Grammars: A Recognition-Based Syntactic Foundation
+;; http://bford.info/pub/lang/peg.pdf
+
+;; # Hierarchical syntax
+;; Grammar <- Spacing Definition+ EndOfFile
+;; Definition <- Identifier LEFTARROW Expression
+;; Expression <- Sequence (SLASH Sequence)*
+;; Sequence <- Prefix*
+;; Prefix <- (AND / NOT)? Suffix
+;; Suffix <- Primary (QUESTION / STAR / PLUS)?
+;; Primary <- Identifier !LEFTARROW
+;; / OPEN Expression CLOSE
+;; / Literal / Class / DOT
+;; # Lexical syntax
+;; Identifier <- IdentStart IdentCont* Spacing
+;; IdentStart <- [a-zA-Z_]
+;; IdentCont <- IdentStart / [0-9]
+;; Literal <- [’] (![’] Char)* [’] Spacing
+;; / ["] (!["] Char)* ["] Spacing
+;; Class <- ’[’ (!’]’ Range)* ’]’ Spacing
+;; Range <- Char ’-’ Char / Char
+;; Char <- ’\\’ [nrt’"\[\]\\]
+;; / ’\\’ [0-2][0-7][0-7]
+;; / ’\\’ [0-7][0-7]?
+;; / !’\\’ .
+;; LEFTARROW <- ’<-’ Spacing
+;; SLASH <- ’/’ Spacing
+;; AND <- ’&’ Spacing
+;; NOT <- ’!’ Spacing
+;; QUESTION <- ’?’ Spacing
+;; STAR <- ’*’ Spacing
+;; PLUS <- ’+’ Spacing
+;; OPEN <- ’(’ Spacing
+;; CLOSE <- ’)’ Spacing
+;; DOT <- ’.’ Spacing
+;; Spacing <- (Space / Comment)*
+;; Comment <- ’#’ (!EndOfLine .)* EndOfLine
+;; Space <- ’ ’ / ’\t’ / EndOfLine
+;; EndOfLine <- ’\r\n’ / ’\n’ / ’\r
+
+;; Grammar to transforms PEG into a Mímir grammar, doesn't full work.
+;; Some places could be simplified using regular expressions, but trying to ensure it works first.
+(def peg (create-parser
+          {:suppress-tags true
+           :post-delimiter #""}
+
+          ;; # Hierarchical syntax
+          :Grammar    [:Spacing :Definition+ :EndOfFile]
+          :Definition [:Identifier :LEFTARROW :Expression]
+          :Expression [:Sequence (take* [:SLASH :Sequence])] (fn ([x] x)
+                                                               ([x & xs]
+                                                                  (cons `choice
+                                                                        (apply maybe-singleton (cons x xs)))))
+          :Sequence   :Prefix*
+          :Prefix     [(take? (choice :AND :NOT)) :Suffix] (fn ([x] x)
+                                                             ([[p] x]
+                                                                (list ({"!" `!
+                                                                        "&" `&} p) x)))
+          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))] (fn [x [s]]
+                                                                          (list ({"+" `take+
+                                                                                  "*" `take*
+                                                                                  "?" `take?} s) x))
+          :Primary    (choice [:Identifier (! :LEFTARROW)]
+                              [:OPEN :Expression :CLOSE]
+                              :Literal :Class :DOT) (fn ([x] x) ([open x close] x))
+          ;; # Lexical syntax
+          :Identifier [:IdentStart :IdentCont* :Spacing] (comp keyword str)
+          :IdentStart #"[a-zA-Z_]"
+          :IdentCont  (choice :IdentStart #"[0-9]")
+          :Literal    (choice ["'" (take* [(! "'") :Char]) "'" :Spacing]
+                              ["\"" (take* [(! "\"") :Char]) "\"" :Spacing])
+          :Class      ["[" (take* [(! "]")  :Range]) "]" :Spacing]
+          :Range      (choice [:Char "-" :Char] :Char)
+          :Char       (choice ["\\" #"[nrt'\"\[\]\\]"]
+                              [ "\\" #"[0-2][0-7][0-7]"]
+                              ["\\" #"[0-7]" (take? #"[0-7]")]
+                              [(! "\\") #"."])
+          :LEFTARROW  ["<-" :Spacing]
+          :SLASH      ["/" :Spacing]
+          :AND        [#"&" :Spacing]
+          :NOT        [#"!" :Spacing]
+          :QUESTION   [#"\?" :Spacing]
+          :STAR       [#"\*"  :Spacing]
+          :PLUS       [#"\+" :Spacing]
+          :OPEN       ["(" :Spacing]
+          :CLOSE      [")" :Spacing]
+          :DOT        ["." :Spacing]
+          :Spacing    (take* (choice :Space :Comment))
+
+          :Comment    ["#" (take* (choice (! :EndOfLine) #".")) :EndOfLine]
+          :Space      (choice " " "\t"  :EndOfLine)
+          :EndOfLine  (choice "\r\n" "\n" "\r")
+          :EndOfFile  (! #".")))
+
+;; First parts, parsing comments enter an infinite loop.
+
+(peg "Grammar <- Spacing Definition+ EndOfFile
+      Definition <- Identifier LEFTARROW Expression
+      Expression <- Sequence (SLASH Sequence)*
+      Sequence <- Prefix*
+      Prefix <- (AND / NOT)? Suffix
+      Suffix <- Primary (QUESTION / STAR / PLUS)?
+      Primary <- Identifier !LEFTARROW
+                 / OPEN Expression CLOSE
+                 / Literal / Class / DOT")
