@@ -227,9 +227,11 @@
 ;; Grammar to transforms PEG into a Mímir grammar.
 ;; Some places could be simplified using regular expressions, but trying to keep it close to the original.
 ;; Note that some actions rely on ArityException falling back to *default-action* instead of providing an implementation.
-(def peg-options {:suppress-tags true
-                  :pre-delimiter #""
-                  :capture-literals true
+(def peg-options {:suppress-tags        true
+                  :capture-literals     true
+                  :pre-delimiter        #""
+                  :post-delimiter       #""
+
                   :actions {:Grammar    (fn [& xs] (apply om/ordered-map (mapcat eval xs)))
                             :Expression (fn ([x] x) ([x & xs] (apply list `choice (remove nil? (cons x xs)))))
                             :Prefix     (fn [prefix x] (list prefix x))
