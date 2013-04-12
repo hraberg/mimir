@@ -316,3 +316,7 @@
 
 ;; mimir-peg and peg-peg are now functionally equal, but contains fns that aren't, string equality holds:
 (= (pr-str mimir-peg) (pr-str peg-peg))
+
+;; Not Memoizing is faster here:
+(comment
+  (time (peg peg-grammar :memoize false)))
