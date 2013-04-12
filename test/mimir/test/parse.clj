@@ -1,4 +1,5 @@
 (ns mimir.test.parse
+  (:require [flatland.ordered.map :as om])
   (:use [mimir.parse]))
 
 ;; This is not yet a real test, just experiments and examples in various broken states.
@@ -261,30 +262,26 @@
 ;; Some places could be simplified using regular expressions, but trying to ensure it works first.
 (def peg (create-parser
           {:suppress-tags true
-           :pre-delimiter #""}
+           :pre-delimiter #""
+           :actions {:Grammar (fn [& defs] (apply grammar (apply concat defs)))
+                     :Expression (fn [x & xs] (cons `choice  (apply maybe-singleton (cons x xs))))
+                     :Prefix (fn [[p] x] (list ({"!" `! "&" `&} p) x))
+                     :Suffix (fn  [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
+                     :Primary (fn [open x close] x)
+                     :Identifier (comp keyword str)}}
 
           ;; # Hierarchical syntax
           :Grammar    [:Spacing :Definition+ :EndOfFile]
           :Definition [:Identifier :LEFTARROW :Expression]
-          :Expression [:Sequence (take* [:SLASH :Sequence])] (fn ([x] x)
-                                                               ([x & xs]
-                                                                  (cons `choice
-                                                                        (apply maybe-singleton (cons x xs)))))
+          :Expression [:Sequence (take* [:SLASH :Sequence])]
           :Sequence   :Prefix*
-          :Prefix     [(take? (choice :AND :NOT)) :Suffix] (fn ([x] x)
-                                                             ([[p] x]
-                                                                (list ({"!" `!
-                                                                        "&" `&} p) x)))
-          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))] (fn ([x] x)
-                                                                          ([x [s]]
-                                                                             (list ({"+" `take+
-                                                                                     "*" `take*
-                                                                                     "?" `take?} s) x)))
+          :Prefix     [(take? (choice :AND :NOT)) :Suffix]
+          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))]
           :Primary    (choice [:Identifier (! :LEFTARROW)]
                               [:OPEN :Expression :CLOSE]
-                              :Literal :Class :DOT) (fn ([x] x) ([open x close] x))
+                              :Literal :Class :DOT)
           ;; # Lexical syntax
-          :Identifier [:IdentStart :IdentCont* :Spacing] (comp keyword str)
+          :Identifier [:IdentStart :IdentCont* :Spacing]
           :IdentStart #"[a-zA-Z_]"
           :IdentCont  (choice :IdentStart #"[0-9]")
           :Literal    (choice ["'" (take* [(! "'") :Char]) "'" :Spacing]
@@ -314,12 +311,14 @@
 
 ;; First parts, parsing comments enter an infinite loop.
 
-(peg "Grammar <- Spacing Definition+ EndOfFile
-      Definition <- Identifier LEFTARROW Expression
-      Expression <- Sequence (SLASH Sequence)*
-      Sequence <- Prefix*
-      Prefix <- (AND / NOT)? Suffix
-      Suffix <- Primary (QUESTION / STAR / PLUS)?
-      Primary <- Identifier !LEFTARROW
-                 / OPEN Expression CLOSE
-                 / Literal / Class / DOT")
+(def peg-grammar "Grammar <- Spacing Definition+ EndOfFile
+                  Definition <- Identifier LEFTARROW Expression
+                  Expression <- Sequence (SLASH Sequence)*
+                  Sequence <- Prefix*
+                  Prefix <- (AND / NOT)? Suffix
+                  Suffix <- Primary (QUESTION / STAR / PLUS)?
+                  Primary <- Identifier !LEFTARROW
+                             / OPEN Expression CLOSE
+                             / Literal / Class / DOT")
+
+(peg peg-grammar)
