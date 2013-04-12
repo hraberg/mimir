@@ -124,6 +124,39 @@
   (let [x 1 y 3]
     (time (right-recursive "x - 2 * y" :read-string (dynamic-reader) :memoize false))))
 
+
+;; This variant handles left-associative without being left recursive:
+;; http://stackoverflow.com/questions/6148705/relation-between-grammar-and-operator-associativity?rq=1
+
+;; Expr  ::= Term  ( ("+"|"-") Term )*;
+;; Term  ::= Factor ( ( "*" | "/" ) Factor )* ;
+;; Factor ::= INTEGER | "(" Expr ")"
+
+;; But the tree is not very clear:
+(defn expr-eval [& x]
+  (let [x (apply maybe-singleton x)]
+    (if (sequential? x)
+      (reduce (fn [x [op y]] ((fun op) x y)) x)
+      x)))
+
+(def stackoverflow (create-parser
+                      {:suppress-tags true}
+
+                      :expr    [:term :term'*] expr-eval
+                      :term'   [#"[+-]" :term]
+                      :term    [:factor :factor'*] expr-eval
+                      :factor' [#"[*/]" :factor]
+                      :factor  #{:integer ["(" :expr ")"]}
+                      :integer #"[0-9]+" read-string))
+
+;; Gives 2 as expected:
+(stackoverflow "1-2+3")
+(stackoverflow "1-2+3" :grammar-actions false :suppress-tags false)
+;; Gives -4 as it should:
+(stackoverflow "1-(2+3)")
+;; Even this beast of mathematical wonder works:
+(stackoverflow "1-2/(3-4)+5*6")
+
 ;; "As example use of our combinators, consider the following ambiguous grammar from Tomita (1986)."
 ;; http://cs.uwindsor.ca/~richard/PUBLICATIONS/PADL_08.pdf
 

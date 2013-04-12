@@ -209,9 +209,9 @@
   (parse [this in]
     (loop [in in
            [m & m-rst] this]
-      (if (and in m (not (at-end? in)))
+      (if (and in m)
         (recur (parse m in) m-rst)
-        (when-not m in))))
+        in)))
 
   StringParser
   (parse
