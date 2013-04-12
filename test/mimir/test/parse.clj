@@ -133,23 +133,24 @@
 ;; Factor ::= INTEGER | "(" Expr ")"
 
 ;; But the tree is not very clear:
-(defn expr-eval [& x]
-  (let [x (apply maybe-singleton x)]
-    (if (sequential? x)
-      (reduce (fn [x [op y]] ((fun op) x y)) x)
-      x)))
+(defn expr-eval [& args]
+  (let [args (apply maybe-singleton args)]
+    (if (sequential? args)
+      (reduce (fn [x [op y]] ((fun op) x y))
+              (first args) (partition-all 2 (rest args)))
+      args)))
 
 (def stackoverflow (create-parser
                       {:suppress-tags true}
 
-                      :expr    [:term :term'*] expr-eval
-                      :term'   [#"[+-]" :term]
-                      :term    [:factor :factor'*] expr-eval
-                      :factor' [#"[*/]" :factor]
+                      :expr    [:term (take* [#"[+-]" :term])] expr-eval
+                      :term    [:factor  (take* [#"[*/]" :factor])] expr-eval
                       :factor  #{:integer ["(" :expr ")"]}
                       :integer #"[0-9]+" read-string))
 
 ;; Gives 2 as expected:
+(stackoverflow "1-2")
+
 (stackoverflow "1-2+3")
 (stackoverflow "1-2+3" :grammar-actions false :suppress-tags false)
 ;; Gives -4 as it should:
@@ -177,3 +178,13 @@
                 :prep #{"in" "with"}))
 
 (ambiguous "i saw a man in the park with a bat")
+
+;; Different ways to specify greedy quanitifers, either in the keyword or via a fn.
+(def helloworld (create-parser
+                 {:capture-string-literals true}
+
+                 :helloworld [:hello* (take? :world)]
+                 :hello "Hello"
+                 :world "World"))
+
+(helloworld "Hello Hello World")

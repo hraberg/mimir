@@ -1,10 +1,11 @@
 (ns mimir.parse
   (:require [clojure.core.reducers :as r]
+            [clojure.walk :as w]
             [flatland.ordered.map :as om]
             [flatland.ordered.set :as os])
   (:import [java.util.regex Pattern]
            [java.util Map Set List]
-           [clojure.lang Keyword ArityException]
+           [clojure.lang Keyword ArityException Fn]
            [flatland.ordered.set OrderedSet]))
 
 ;; Mímir Parse
@@ -39,7 +40,7 @@
 (def ^:dynamic *grammar-actions* true)
 (def ^:dynamic *alternatives-rank* #'depth)
 (def ^:dynamic *grammar* {})
-(def ^:dynamic *failure-grammar* {:no-match [#"\S*" #(throw (IllegalStateException.
+(def ^:dynamic *failure-grammar* {:no-match [#"\S+" #(throw (IllegalStateException.
                                                              (format "Don't know how to parse: '%s' at %d:%d"
                                                                      % (:line *current-state*) (column *current-state*))))]})
 (def ^:dynamic *start-rule* first)
@@ -138,6 +139,42 @@
 (defn valid-choices [in ms]
   (fold-into vector (r/remove nil? (r/map #(parse % in) (vec ms)))))
 
+(deftype ZeroOrMore [m]
+  IParser
+  (parse [this in]
+    (loop [in in]
+      (if-let [in (parse m in)]
+        (recur in)
+        in))))
+
+(deftype OneOrMore [m]
+  IParser
+  (parse [this in]
+    (when-let [in (parse m in)]
+      (parse (ZeroOrMore. m) in))))
+
+(deftype Optional [m]
+  IParser
+  (parse [this in]
+    (or (parse m in) in)))
+
+(deftype Not [m]
+  IParser
+  (parse [this in]
+    (and (not (parse m in)) in)))
+
+(deftype And [m]
+  IParser
+  (parse [this in]
+    (and (parse m in) in)))
+
+;; Not sure what to call these guys.
+(def take+ ->OneOrMore)
+(def take* ->ZeroOrMore)
+(def take? ->Optional)
+(def ! ->Not)
+(def & ->And)
+
 (extend-protocol IParser
   Pattern
   (parse [this in]
@@ -173,22 +210,16 @@
                                                                  (apply (or (when *grammar-actions* action)
                                                                             *default-action*) %)
                                                                  (catch ArityException _
-                                                                   (apply *default-action* %))))))))))
-                    (parse-many [in quantifier]
-                      (case quantifier
-                        ? (or (parse-one in) in)
-                        * (loop [in in]
-                            (if-let [in (parse-one in)]
-                              (recur in)
-                              in))
-                        + (when-let [in (parse-one in)]
-                            (parse-many in '*))
-                        (parse-one in)))]
-              (let [result (parse-many in quantifier)]
-                (case predicate
-                  ! (when-not result in)
-                  & (when result in)
-                  result)))
+                                                                   (apply *default-action* %))))))))))]
+              (let [parser (case quantifier
+                             ? (Optional. parse-one)
+                             * (ZeroOrMore. parse-one)
+                             + (OneOrMore. parse-one)
+                             parse-one)]
+                (parse (case predicate
+                         ! (Not. parser)
+                         & (And. parser)
+                         parser) in)))
             (throw (IllegalStateException. (str "Unknown rule: " this))))))))
 
   Set
@@ -213,6 +244,10 @@
         (recur (parse m in) m-rst)
         in)))
 
+  Fn
+  (parse [this in]
+    (this in))
+
   StringParser
   (parse
     ([this] (parse *grammar* this))
@@ -222,7 +257,7 @@
 (def choice os/ordered-set)
 
 (defn fun [s]
-  (resolve (symbol s)))
+  (resolve (symbol (str s))))
 
 (defn op
   ([op x] ((fun op) x))
@@ -243,9 +278,10 @@
 (defn grammar [& rules]
   (let [rules (mapcat (fn [[rs [f]]] (if f (conj (vec (butlast rs)) [(last rs) f]) rs))
                       (partition-all 2 (partition-by action? rules)))]
-    (into (om/ordered-map) (map (fn [[name rule]] [name (if (rule? rule)
-                                                          rule
-                                                          [rule])])
+    (into (om/ordered-map) (map (fn [[name rule]]
+                                  [name (if (rule? rule)
+                                          rule
+                                          [rule])])
                                 (partition 2 rules)))))
 
 (defn parser-option [option]
