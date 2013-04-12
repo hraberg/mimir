@@ -224,7 +224,7 @@
 ;; from Parsing Expression Grammars: A Recognition-Based Syntactic Foundation
 ;; http://bford.info/pub/lang/peg.pdf
 
-;; Grammar to transforms PEG into a Mímir grammar.
+;; Grammar to transform PEG into a Mímir grammar.
 ;; Some places could be simplified using regular expressions, but trying to keep it close to the original.
 ;; Note that some actions rely on ArityException falling back to *default-action* instead of providing an implementation.
 (def peg-options {:suppress-tags        true
