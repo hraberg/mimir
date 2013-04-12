@@ -320,3 +320,9 @@
                   (finally
                    (when *memoize*
                      (alter-var-root #'parse (constantly real-parse))))))))))))
+
+;; Should be folded into the above, but requires some messing about.
+(defn create-parser-from-map
+  ([m] (create-parser-from-map {} m))
+  ([options m]
+     (apply create-parser options (apply concat m))))

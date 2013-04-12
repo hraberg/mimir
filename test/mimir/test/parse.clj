@@ -260,15 +260,17 @@
 
 ;; Grammar to transforms PEG into a Mímir grammar, doesn't yet work.
 ;; Some places could be simplified using regular expressions, but trying to ensure it works first.
+(def peg-actions {:Grammar (fn [& defs] (apply grammar (apply concat (map eval defs))))
+                  :Expression (fn ([x] x) ([x & xs] (apply list `choice (remove nil? (cons x xs)))))
+                  :Prefix (fn [[p] x] (list ({"!" `! "&" `&} p) x))
+                  :Suffix (fn [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
+                  :Primary (fn [open x close] x)
+                  :Identifier (comp keyword str)})
+
 (def peg (create-parser
           {:suppress-tags true
            :pre-delimiter #""
-           :actions {:Grammar (fn [& defs] (apply grammar (apply concat (map eval defs))))
-                     :Expression (fn [x & xs] (cons `choice  (apply maybe-singleton x xs)))
-                     :Prefix (fn [[p] x] (list ({"!" `! "&" `&} p) x))
-                     :Suffix (fn [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
-                     :Primary (fn [open x close] x)
-                     :Identifier (comp keyword str)}}
+           :actions peg-actions}
 
           ;; # Hierarchical syntax
           :Grammar    [:Spacing :Definition+ :EndOfFile]
@@ -320,5 +322,11 @@
                   Primary <- Identifier !LEFTARROW
                              / OPEN Expression CLOSE
                              / Literal / Class / DOT")
-
 (peg peg-grammar)
+
+;; Reparse the grammar using the created parser:
+;; Doesn't work yet.
+(comment
+  ((create-parser-from-map
+    {:suppress-tags true :pre-delimiter #"" :actions peg-actions}
+    (peg peg-grammar)) peg-grammar))
