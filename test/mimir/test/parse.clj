@@ -37,19 +37,19 @@
 ;; | Decimal
 ;; Decimal → '0' | ... | '9'
 
-;; Should arguebly use choice instead of #{}
 (def peg-expression (create-parser
                      {:suppress-tags true}
 
-                     :additive  #{[:multitive #"[+-]" :additive]
-                                  :multitive} op
-                     :multitive #{[:primary #"[*/]" :multitive]
-                                  :primary} op
-                     :primary   #{["(" :additive ")"]
-                                  :decimal}
+                     :additive  (choice [:multitive #"[+-]" :additive]
+                                        :multitive) op
+                     :multitive (choice [:primary #"[*/]" :multitive]
+                                        :primary) op
+                     :primary   (choice ["(" :additive ")"]
+                                        :decimal)
                      :decimal   #"[0-9]+" read-string))
 
 ;; This gets wrong precedence, regardless of using choice / OrderedSet or not. So something else.
+;; This also seems right associtive?
 ;; Should return 33.
 (peg-expression "1-2/(3-4)+5*6")
 
@@ -110,6 +110,11 @@
 ;; Extended the grammar to support parenthesis, now this fails the same way as peg-expression:
 (right-recursive "1-2/(3-4)+5*6")
 ;; Gives -27, should be 33.
+
+;; Here's a simpler tree that fails:
+;; Gives -4, should be 2.
+(right-recursive "1-2+3")
+;; Actually, the slides says: "Note: This grammar is right-associative." !
 
 ;; But the tree is much nicer, and could hint to the answer:
 (right-recursive "1-2/(3-4)+5*6" :grammar-actions false :suppress-tags false)
