@@ -263,8 +263,8 @@
 (def peg (create-parser
           {:suppress-tags true
            :pre-delimiter #""
-           :actions {:Grammar (fn [& defs] (apply grammar (apply concat defs)))
-                     :Expression (fn [x & xs] (cons `choice  (apply maybe-singleton (cons x xs))))
+           :actions {:Grammar (fn [& defs] (apply grammar (apply concat (map eval defs))))
+                     :Expression (fn [x & xs] (cons `choice  (apply maybe-singleton x xs)))
                      :Prefix (fn [[p] x] (list ({"!" `! "&" `&} p) x))
                      :Suffix (fn [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
                      :Primary (fn [open x close] x)

@@ -48,6 +48,8 @@
 (def ^:dynamic *extract-result* (comp first :result))
 (def ^:dynamic *read-string* read-string)
 
+
+;; Not sure this name is right
 (defn maybe-singleton
   ([])
   ([x] x)
@@ -78,7 +80,50 @@
       suppressed-defintion
       r)))
 
-(defrecord StringParser [string offset line token result])
+(defprotocol IParser
+  (parse [this] [this in]))
+
+(defrecord StringParser [string offset line token result]
+  IParser
+  (parse [this] (parse *grammar* this))
+  (parse [this parser]
+    (parse parser this)))
+
+(defrecord ZeroOrMore [m]
+  IParser
+  (parse [this in]
+    (loop [in in]
+      (if-let [in (parse m in)]
+        (recur in)
+        in))))
+
+(defrecord OneOrMore [m]
+  IParser
+  (parse [this in]
+    (when-let [in (parse m in)]
+      (parse (ZeroOrMore. m) in))))
+
+(defrecord Optional [m]
+  IParser
+  (parse [this in]
+    (or (parse m in) in)))
+
+(defrecord Not [m]
+  IParser
+  (parse [this in]
+    (and (not (parse m in)) in)))
+
+(defrecord And [m]
+  IParser
+  (parse [this in]
+    (and (parse m in) in)))
+
+;; Not sure what to call these guys.
+(def take+ ->OneOrMore)
+(def take* ->ZeroOrMore)
+(def take? ->Optional)
+(def ! ->Not)
+(def & ->And)
 
 (defn string-parser
   ([s] (if (instance? StringParser s) s (string-parser s *default-result*)))
@@ -130,52 +175,12 @@
   (let [[_ n quantifier] (re-find #"(.+?)([+*?]?)$" (name n))]
     [(keyword n) (when (seq quantifier) (symbol quantifier))]))
 
-;; Not sure this name is right
-(defprotocol IParser
-  (parse [this] [this in]))
-
 (defn fold-into [ctor coll]
   (r/fold (r/monoid into ctor) conj coll))
 
 ;; This could potentially be a tree, but requires to restructure and use reducers all over the place.
 (defn valid-choices [in ms]
   (fold-into vector (r/remove nil? (r/map #(parse % in) (vec ms)))))
-
-(deftype ZeroOrMore [m]
-  IParser
-  (parse [this in]
-    (loop [in in]
-      (if-let [in (parse m in)]
-        (recur in)
-        in))))
-
-(deftype OneOrMore [m]
-  IParser
-  (parse [this in]
-    (when-let [in (parse m in)]
-      (parse (ZeroOrMore. m) in))))
-
-(deftype Optional [m]
-  IParser
-  (parse [this in]
-    (or (parse m in) in)))
-
-(deftype Not [m]
-  IParser
-  (parse [this in]
-    (and (not (parse m in)) in)))
-
-(deftype And [m]
-  IParser
-  (parse [this in]
-    (and (parse m in) in)))
-
-;; Not sure what to call these guys.
-(def take+ ->OneOrMore)
-(def take* ->ZeroOrMore)
-(def take? ->Optional)
-(def ! ->Not)
-(def & ->And)
 
 (extend-protocol IParser
   Pattern
@@ -250,13 +255,7 @@
 
   Fn
   (parse [this in]
-    (this in))
-
-  StringParser
-  (parse
-    ([this] (parse *grammar* this))
-    ([this parser]
-       (parse parser this))))
+    (this in)))
 
 (def choice os/ordered-set)
 
