@@ -159,6 +159,34 @@
 ;; Even this beast of mathematical wonder works:
 (stackoverflow "1-2/(3-4)+5*6")
 
+;; Mark Engelberg's examples from the Clojure mailing list.
+;; (def addition-associate-right
+;;   (insta/parser
+;;     "plus = num <'+'> plus | num
+;;      num = #'[0-9]'+"))
+
+;; (def addition-associate-left
+;;   (insta/parser
+;;     "plus = plus <'+'> num | num
+;;      num = #'[0-9]'+"))
+
+(def addition-associate-right (create-parser
+                               {:suppress-tags true}
+
+                               :plus (choice [:num "+" :plus] :num) +
+                               :num  #"[0-9]+" read-string))
+
+(addition-associate-right "1+2+3")
+
+(def addition-associate-left (create-parser
+                              {:suppress-tags true}
+
+                              :plus (choice [:plus #"[+]" :num] :num) +
+                              :num  #"[0-9]+" read-string))
+
+;; This requires left recursion
+;; (addition-associate-left "1+2+3")
+
 ;; "As example use of our combinators, consider the following ambiguous grammar from Tomita (1986)."
 ;; http://cs.uwindsor.ca/~richard/PUBLICATIONS/PADL_08.pdf
 
