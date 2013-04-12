@@ -28,7 +28,7 @@
 
 (def ^:dynamic *allow-split-tokens* true) ;; Overrides post-delimiter.
 (def ^:dynamic *memoize* true)
-(def ^:dynamic *capture-string-literals* false)
+(def ^:dynamic *capture-literals* false)
 (def ^:dynamic *pre-delimiter* #"\s*")
 (def ^:dynamic *post-delimiter* #"(:?\s+|$)")
 (def ^:dynamic *first-line* 1)
@@ -38,6 +38,7 @@
 (def ^:dynamic *node-fn* #'node)
 (def ^:dynamic *default-action* #'maybe-singleton)
 (def ^:dynamic *actions* {})
+(def ^:dynamic *constants* {})
 (def ^:dynamic *grammar-actions* true)
 (def ^:dynamic *alternatives-rank* #'depth)
 (def ^:dynamic *grammar* {})
@@ -195,7 +196,7 @@
   (parse
     ([this] (parse (string-parser this)))
     ([this in]
-       (next-token in (re-pattern (Pattern/quote this)) *capture-string-literals*)))
+       (next-token in (re-pattern (Pattern/quote this)) *capture-literals*)))
 
   Keyword
   (parse [this in]
@@ -215,7 +216,9 @@
                                        #(*token-fn* current-result
                                                     (*node-fn* (try
                                                                  (apply (or (when *grammar-actions*
-                                                                              (or (this *actions*)
+                                                                              (or (when (contains? *constants* this)
+                                                                                    (constantly (this *constants*)))
+                                                                                  (this *actions*)
                                                                                   action))
                                                                             *default-action*) %)
                                                                  (catch ArityException _
@@ -313,10 +316,11 @@
                 (try
                   (when *memoize* ;; Just rebinding doesn't work for some reason
                     (alter-var-root #'parse memoize))
-                  (when-let [in (parse grammar in)]
+                  (if-let [in (parse grammar in)]
                     (if (at-end? in)
                       (*extract-result* in)
-                      (parse *failure-grammar* in)))
+                      (parse *failure-grammar* in))
+                    (parse *failure-grammar* in))
                   (finally
                    (when *memoize*
                      (alter-var-root #'parse (constantly real-parse))))))))))))

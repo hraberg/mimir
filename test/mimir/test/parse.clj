@@ -1,5 +1,6 @@
 (ns mimir.test.parse
-  (:require [flatland.ordered.map :as om])
+  (:require [flatland.ordered.map :as om]
+            [clojure.string :as s])
   (:use [mimir.parse]))
 
 ;; This is not yet a real test, just experiments and examples in various broken states.
@@ -194,7 +195,7 @@
 ;; det ::= "a" | "the"  noun ::= "i" | "man" | "park" | "bat"
 ;; verb ::= "saw"       prep ::= "in" | "with"
 (def ambiguous (create-parser
-                {:capture-string-literals true}
+                {:capture-literals true}
 
                 :s    #{[:np :vp] [:s :pp]}
                 :pp   [:prep :np]
@@ -209,7 +210,7 @@
 
 ;; Different ways to specify greedy quanitifers, either in the keyword or via a fn.
 (def helloworld (create-parser
-                 {:capture-string-literals true}
+                 {:capture-literals true}
 
                  :helloworld [:hello* (take? :world)]
                  :hello "Hello"
@@ -221,56 +222,34 @@
 ;; from Parsing Expression Grammars: A Recognition-Based Syntactic Foundation
 ;; http://bford.info/pub/lang/peg.pdf
 
-;; # Hierarchical syntax
-;; Grammar <- Spacing Definition+ EndOfFile
-;; Definition <- Identifier LEFTARROW Expression
-;; Expression <- Sequence (SLASH Sequence)*
-;; Sequence <- Prefix*
-;; Prefix <- (AND / NOT)? Suffix
-;; Suffix <- Primary (QUESTION / STAR / PLUS)?
-;; Primary <- Identifier !LEFTARROW
-;; / OPEN Expression CLOSE
-;; / Literal / Class / DOT
-;; # Lexical syntax
-;; Identifier <- IdentStart IdentCont* Spacing
-;; IdentStart <- [a-zA-Z_]
-;; IdentCont <- IdentStart / [0-9]
-;; Literal <- [’] (![’] Char)* [’] Spacing
-;; / ["] (!["] Char)* ["] Spacing
-;; Class <- ’[’ (!’]’ Range)* ’]’ Spacing
-;; Range <- Char ’-’ Char / Char
-;; Char <- ’\\’ [nrt’"\[\]\\]
-;; / ’\\’ [0-2][0-7][0-7]
-;; / ’\\’ [0-7][0-7]?
-;; / !’\\’ .
-;; LEFTARROW <- ’<-’ Spacing
-;; SLASH <- ’/’ Spacing
-;; AND <- ’&’ Spacing
-;; NOT <- ’!’ Spacing
-;; QUESTION <- ’?’ Spacing
-;; STAR <- ’*’ Spacing
-;; PLUS <- ’+’ Spacing
-;; OPEN <- ’(’ Spacing
-;; CLOSE <- ’)’ Spacing
-;; DOT <- ’.’ Spacing
-;; Spacing <- (Space / Comment)*
-;; Comment <- ’#’ (!EndOfLine .)* EndOfLine
-;; Space <- ’ ’ / ’\t’ / EndOfLine
-;; EndOfLine <- ’\r\n’ / ’\n’ / ’\r
+;; Grammar to transforms PEG into a Mímir grammar.
+;; Some places could be simplified using regular expressions, but trying to keep it close to the original.
+;; Note that some actions rely on ArityException falling back to *default-action* instead of providing an implementation.
+(def peg-options {:suppress-tags true
+                  :pre-delimiter #""
+                  :capture-literals true
+                  :actions {:Grammar    (fn [& xs] (apply om/ordered-map (mapcat eval xs)))
+                            :Expression (fn ([x] x) ([x & xs] (apply list `choice (remove nil? (cons x xs)))))
+                            :Prefix     (fn [prefix x] (list prefix x))
+                            :Suffix     (fn [x suffix] (list suffix x))
+                            :Primary    (fn [open x close] x)
+                            :Identifier (comp keyword str)
+                            :Literal    (fn [& xs]
+                                          (reduce (fn [s [m r]]
+                                                    (s/replace s m r)) (s/replace (apply str xs) #"(^'|'$)" "")
+                                                    [["\\\\" "\\"] ["\\n" "\n"] ["\\r" "\r"] ["\\t" "\t"]]))
+                            :Class      (fn [& xs] (re-pattern (apply str xs)))
+                            :Range      (fn ([start dash end] (str start dash end)))
+                            :Char       str}
+                  :constants {:LEFTARROW nil :SLASH nil
+                              :AND `& :NOT `!
+                              :QUESTION `take? :STAR `take* :PLUS `take+
+                              :OPEN nil :CLOSE nil
+                              :DOT #"." :Spacing nil}})
 
-;; Grammar to transforms PEG into a Mímir grammar, doesn't yet work.
-;; Some places could be simplified using regular expressions, but trying to ensure it works first.
-(def peg-actions {:Grammar (fn [& defs] (apply grammar (apply concat (map eval defs))))
-                  :Expression (fn ([x] x) ([x & xs] (apply list `choice (remove nil? (cons x xs)))))
-                  :Prefix (fn [[p] x] (list ({"!" `! "&" `&} p) x))
-                  :Suffix (fn [x [s]] (list ({"+" `take+ "*" `take* "?" `take?} s) x))
-                  :Primary (fn [open x close] x)
-                  :Identifier (comp keyword str)})
-
+;; Bootstrap grammar, same as peg.txt in Mimir's format.
 (def peg (create-parser
-          {:suppress-tags true
-           :pre-delimiter #""
-           :actions peg-actions}
+          peg-options
 
           ;; # Hierarchical syntax
           :Grammar    [:Spacing :Definition+ :EndOfFile]
@@ -290,43 +269,37 @@
                               ["\"" (take* [(! "\"") :Char]) "\"" :Spacing])
           :Class      ["[" (take* [(! "]")  :Range]) "]" :Spacing]
           :Range      (choice [:Char "-" :Char] :Char)
-          :Char       (choice ["\\" #"[nrt'\"\[\]\\]"]
-                              [ "\\" #"[0-2][0-7][0-7]"]
-                              ["\\" #"[0-7]" (take? #"[0-7]")]
+          :Char       (choice [#"\\" #"[nrt'\"\[\]\\]"]
+                              [#"\\" #"[0-2][0-7][0-7]"]
+                              [#"\\" #"[0-7][0-7]?"]
                               [(! "\\") #"."])
+
           :LEFTARROW  ["<-" :Spacing]
           :SLASH      ["/" :Spacing]
-          :AND        [#"&" :Spacing]
-          :NOT        [#"!" :Spacing]
-          :QUESTION   [#"\?" :Spacing]
-          :STAR       [#"\*"  :Spacing]
-          :PLUS       [#"\+" :Spacing]
+          :AND        ["&" :Spacing]
+          :NOT        ["!" :Spacing]
+          :QUESTION   ["?" :Spacing]
+          :STAR       ["*"  :Spacing]
+          :PLUS       ["+" :Spacing]
           :OPEN       ["(" :Spacing]
           :CLOSE      [")" :Spacing]
           :DOT        ["." :Spacing]
+
           :Spacing    (take* (choice :Space :Comment))
 
-          :Comment    ["#" (take* (choice (! :EndOfLine) #".")) :EndOfLine]
+          :Comment    ["#" (take* [(! :EndOfLine) #"."]) :EndOfLine]
           :Space      (choice " " "\t"  :EndOfLine)
           :EndOfLine  (choice "\r\n" "\n" "\r")
           :EndOfFile  (! #".")))
 
-;; First parts, parsing comments enter an infinite loop.
+;; The real PEG grammar as text:
+(def peg-grammar (slurp "test/mimir/test/peg.txt"))
 
-(def peg-grammar "Grammar <- Spacing Definition+ EndOfFile
-                  Definition <- Identifier LEFTARROW Expression
-                  Expression <- Sequence (SLASH Sequence)*
-                  Sequence <- Prefix*
-                  Prefix <- (AND / NOT)? Suffix
-                  Suffix <- Primary (QUESTION / STAR / PLUS)?
-                  Primary <- Identifier !LEFTARROW
-                             / OPEN Expression CLOSE
-                             / Literal / Class / DOT")
-(peg peg-grammar)
+;; We use the bootstrap to parse the real PEG grammar:
+(def mimir-peg (peg peg-grammar))
 
 ;; Reparse the grammar using the created parser:
-;; Doesn't work yet.
-(comment
-  ((create-parser-from-map
-    {:suppress-tags true :pre-delimiter #"" :actions peg-actions}
-    (peg peg-grammar)) peg-grammar))
+(def peg-peg ((create-parser-from-map peg-options mimir-peg) peg-grammar))
+
+;; mimir-peg and peg-peg are now functionally equal, but contains fns that aren't, string equality holds:
+(= (pr-str mimir-peg) (pr-str peg-peg))
