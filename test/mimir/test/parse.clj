@@ -140,6 +140,7 @@
               (first args) (partition-all 2 (rest args)))
       args)))
 
+;; As seen above, named after the site, not the exception.
 (def stackoverflow (create-parser
                       {:suppress-tags true}
 
