@@ -258,7 +258,7 @@
 ;; Space <- ’ ’ / ’\t’ / EndOfLine
 ;; EndOfLine <- ’\r\n’ / ’\n’ / ’\r
 
-;; Grammar to transforms PEG into a Mímir grammar, doesn't full work.
+;; Grammar to transforms PEG into a Mímir grammar, doesn't yet work.
 ;; Some places could be simplified using regular expressions, but trying to ensure it works first.
 (def peg (create-parser
           {:suppress-tags true
