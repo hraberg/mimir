@@ -235,6 +235,7 @@
                             :Prefix     (fn [prefix x] (list prefix x))
                             :Suffix     (fn [x suffix] (list suffix x))
                             :Primary    (fn [open x close] x)
+
                             :Identifier (comp keyword str)
                             :Literal    (fn [& xs]
                                           (reduce (fn [s [m r]]
@@ -242,12 +243,20 @@
                                                     [["\\\\" "\\"] ["\\n" "\n"] ["\\r" "\r"] ["\\t" "\t"]]))
                             :Class      (fn [& xs] (re-pattern (apply str xs)))
                             :Range      (fn ([start dash end] (str start dash end)))
-                            :Char       str}
-                  :constants {:LEFTARROW nil :SLASH nil
-                              :AND `& :NOT `!
-                              :QUESTION `take? :STAR `take* :PLUS `take+
-                              :OPEN nil :CLOSE nil
-                              :DOT #"." :Spacing nil}})
+                            :Char       str
+
+                            :LEFTARROW  nil
+                            :SLASH      nil
+                            :AND        `&
+                            :NOT        `!
+                            :QUESTION   `take?
+                            :STAR       `take*
+                            :PLUS       `take+
+                            :OPEN       nil
+                            :CLOSE      nil
+                            :DOT        #"."
+
+                            :Spacing    nil}})
 
 ;; Bootstrap grammar, same as peg.txt in Mimir's format.
 (def peg (create-parser

@@ -38,7 +38,6 @@
 (def ^:dynamic *node-fn* #'node)
 (def ^:dynamic *default-action* #'maybe-singleton)
 (def ^:dynamic *actions* {})
-(def ^:dynamic *constants* {})
 (def ^:dynamic *grammar-actions* true)
 (def ^:dynamic *alternatives-rank* #'depth)
 (def ^:dynamic *grammar* {})
@@ -216,8 +215,11 @@
                                        #(*token-fn* current-result
                                                     (*node-fn* (try
                                                                  (apply (or (when *grammar-actions*
-                                                                              (or (when (contains? *constants* this)
-                                                                                    (constantly (this *constants*)))
+                                                                              (or (when (contains? *actions* this)
+                                                                                    (let [action (this *actions*)]
+                                                                                      (if (fn? action)
+                                                                                        action
+                                                                                        (constantly action))))
                                                                                   (this *actions*)
                                                                                   action))
                                                                             *default-action*) %)
