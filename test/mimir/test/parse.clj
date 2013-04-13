@@ -4,7 +4,105 @@
   (:use [mimir.parse]))
 
 ;; This is not yet a real test, just experiments and examples in various broken states.
-;; See the bottom of this file for an example of the PEG grammar reparsing itself.
+
+;; Figure 1. PEG formally describing its own ASCII syntax
+;; from Parsing Expression Grammars: A Recognition-Based Syntactic Foundation
+;; http://bford.info/pub/lang/peg.pdf
+(def peg-grammar (slurp "test/mimir/test/peg.txt"))
+
+;; Grammar to transform PEG into a Mímir grammar.
+;; Some places could be simplified using regular expressions, but trying to keep it close to the original.
+;; Note that some actions rely on ArityException falling back to *default-action* instead of providing an implementation.
+(def peg-options {:suppress-tags        true
+                  :capture-literals     true
+                  :pre-delimiter        #""
+                  :post-delimiter       #""
+
+                  :actions {:Grammar    (fn [& xs] (apply om/ordered-map (mapcat eval xs)))
+                            :Expression (fn ([x] x) ([x & xs] (apply list `choice (remove nil? (cons x xs)))))
+                            :Prefix     (fn [prefix x] (list prefix x))
+                            :Suffix     (fn [x suffix] (list suffix x))
+                            :Primary    (fn [open x close] x)
+
+                            :Identifier (comp keyword str)
+                            :Literal    (fn [& xs]
+                                          (reduce (fn [s [m r]]
+                                                    (s/replace s m r)) (s/replace (apply str xs) #"(^'|'$)" "")
+                                                    [["\\\\" "\\"] ["\\n" "\n"] ["\\r" "\r"] ["\\t" "\t"]]))
+                            :Class      (fn [& xs] (re-pattern (apply str xs)))
+                            :Range      (fn ([start dash end] (str start dash end)))
+                            :Char       str
+
+                            :LEFTARROW  nil
+                            :SLASH      nil
+                            :AND        `&
+                            :NOT        `!
+                            :QUESTION   `take?
+                            :STAR       `take*
+                            :PLUS       `take+
+                            :OPEN       nil
+                            :CLOSE      nil
+                            :DOT        #"."
+
+                            :Spacing    nil}})
+
+;; Bootstrap grammar, same as peg.txt in Mimir's format.
+(def peg (create-parser
+          peg-options
+
+          ;; # Hierarchical syntax
+          :Grammar    [:Spacing :Definition+ :EndOfFile]
+          :Definition [:Identifier :LEFTARROW :Expression]
+          :Expression [:Sequence (take* [:SLASH :Sequence])]
+          :Sequence   :Prefix*
+          :Prefix     [(take? (choice :AND :NOT)) :Suffix]
+          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))]
+          :Primary    (choice [:Identifier (! :LEFTARROW)]
+                              [:OPEN :Expression :CLOSE]
+                              :Literal :Class :DOT)
+          ;; # Lexical syntax
+          :Identifier [:IdentStart :IdentCont* :Spacing]
+          :IdentStart #"[a-zA-Z_]"
+          :IdentCont  (choice :IdentStart #"[0-9]")
+          :Literal    (choice ["'" (take* [(! "'") :Char]) "'" :Spacing]
+                              ["\"" (take* [(! "\"") :Char]) "\"" :Spacing])
+          :Class      ["[" (take* [(! "]")  :Range]) "]" :Spacing]
+          :Range      (choice [:Char "-" :Char] :Char)
+          :Char       (choice [#"\\" #"[nrt'\"\[\]\\]"]
+                              [#"\\" #"[0-2][0-7][0-7]"]
+                              [#"\\" #"[0-7][0-7]?"]
+                              [(! "\\") #"."])
+
+          :LEFTARROW  ["<-" :Spacing]
+          :SLASH      ["/" :Spacing]
+          :AND        ["&" :Spacing]
+          :NOT        ["!" :Spacing]
+          :QUESTION   ["?" :Spacing]
+          :STAR       ["*"  :Spacing]
+          :PLUS       ["+" :Spacing]
+          :OPEN       ["(" :Spacing]
+          :CLOSE      [")" :Spacing]
+          :DOT        ["." :Spacing]
+
+          :Spacing    (take* (choice :Space :Comment))
+
+          :Comment    ["#" (take* [(! :EndOfLine) #"."]) :EndOfLine]
+          :Space      (choice " " "\t"  :EndOfLine)
+          :EndOfLine  (choice "\r\n" "\n" "\r")
+          :EndOfFile  (! #".")))
+
+;; We use the bootstrap to parse the real PEG grammar:
+(def mimir-peg (peg peg-grammar))
+
+;; Reparse the grammar using the created parser:
+(def peg-peg ((create-parser-from-map peg-options mimir-peg) peg-grammar))
+
+;; mimir-peg and peg-peg are now functionally equal, but contains fns that aren't, string equality holds:
+(= (pr-str mimir-peg) (pr-str peg-peg))
+
+;; Not Memoizing is faster here:
+(comment
+  (time (peg peg-grammar :memoize false)))
 
 ;; This grammar is from the "Transforming the tree" section of Instaparser:
 ;; https://github.com/Engelberg/instaparse#transforming-the-tree
@@ -219,104 +317,3 @@
                  :world "World"))
 
 (helloworld "Hello Hello World")
-
-;; Figure 1. PEG formally describing its own ASCII syntax
-;; from Parsing Expression Grammars: A Recognition-Based Syntactic Foundation
-;; http://bford.info/pub/lang/peg.pdf
-
-;; Grammar to transform PEG into a Mímir grammar.
-;; Some places could be simplified using regular expressions, but trying to keep it close to the original.
-;; Note that some actions rely on ArityException falling back to *default-action* instead of providing an implementation.
-(def peg-options {:suppress-tags        true
-                  :capture-literals     true
-                  :pre-delimiter        #""
-                  :post-delimiter       #""
-
-                  :actions {:Grammar    (fn [& xs] (apply om/ordered-map (mapcat eval xs)))
-                            :Expression (fn ([x] x) ([x & xs] (apply list `choice (remove nil? (cons x xs)))))
-                            :Prefix     (fn [prefix x] (list prefix x))
-                            :Suffix     (fn [x suffix] (list suffix x))
-                            :Primary    (fn [open x close] x)
-
-                            :Identifier (comp keyword str)
-                            :Literal    (fn [& xs]
-                                          (reduce (fn [s [m r]]
-                                                    (s/replace s m r)) (s/replace (apply str xs) #"(^'|'$)" "")
-                                                    [["\\\\" "\\"] ["\\n" "\n"] ["\\r" "\r"] ["\\t" "\t"]]))
-                            :Class      (fn [& xs] (re-pattern (apply str xs)))
-                            :Range      (fn ([start dash end] (str start dash end)))
-                            :Char       str
-
-                            :LEFTARROW  nil
-                            :SLASH      nil
-                            :AND        `&
-                            :NOT        `!
-                            :QUESTION   `take?
-                            :STAR       `take*
-                            :PLUS       `take+
-                            :OPEN       nil
-                            :CLOSE      nil
-                            :DOT        #"."
-
-                            :Spacing    nil}})
-
-;; Bootstrap grammar, same as peg.txt in Mimir's format.
-(def peg (create-parser
-          peg-options
-
-          ;; # Hierarchical syntax
-          :Grammar    [:Spacing :Definition+ :EndOfFile]
-          :Definition [:Identifier :LEFTARROW :Expression]
-          :Expression [:Sequence (take* [:SLASH :Sequence])]
-          :Sequence   :Prefix*
-          :Prefix     [(take? (choice :AND :NOT)) :Suffix]
-          :Suffix     [:Primary (take? (choice :QUESTION :STAR :PLUS))]
-          :Primary    (choice [:Identifier (! :LEFTARROW)]
-                              [:OPEN :Expression :CLOSE]
-                              :Literal :Class :DOT)
-          ;; # Lexical syntax
-          :Identifier [:IdentStart :IdentCont* :Spacing]
-          :IdentStart #"[a-zA-Z_]"
-          :IdentCont  (choice :IdentStart #"[0-9]")
-          :Literal    (choice ["'" (take* [(! "'") :Char]) "'" :Spacing]
-                              ["\"" (take* [(! "\"") :Char]) "\"" :Spacing])
-          :Class      ["[" (take* [(! "]")  :Range]) "]" :Spacing]
-          :Range      (choice [:Char "-" :Char] :Char)
-          :Char       (choice [#"\\" #"[nrt'\"\[\]\\]"]
-                              [#"\\" #"[0-2][0-7][0-7]"]
-                              [#"\\" #"[0-7][0-7]?"]
-                              [(! "\\") #"."])
-
-          :LEFTARROW  ["<-" :Spacing]
-          :SLASH      ["/" :Spacing]
-          :AND        ["&" :Spacing]
-          :NOT        ["!" :Spacing]
-          :QUESTION   ["?" :Spacing]
-          :STAR       ["*"  :Spacing]
-          :PLUS       ["+" :Spacing]
-          :OPEN       ["(" :Spacing]
-          :CLOSE      [")" :Spacing]
-          :DOT        ["." :Spacing]
-
-          :Spacing    (take* (choice :Space :Comment))
-
-          :Comment    ["#" (take* [(! :EndOfLine) #"."]) :EndOfLine]
-          :Space      (choice " " "\t"  :EndOfLine)
-          :EndOfLine  (choice "\r\n" "\n" "\r")
-          :EndOfFile  (! #".")))
-
-;; The real PEG grammar as text:
-(def peg-grammar (slurp "test/mimir/test/peg.txt"))
-
-;; We use the bootstrap to parse the real PEG grammar:
-(def mimir-peg (peg peg-grammar))
-
-;; Reparse the grammar using the created parser:
-(def peg-peg ((create-parser-from-map peg-options mimir-peg) peg-grammar))
-
-;; mimir-peg and peg-peg are now functionally equal, but contains fns that aren't, string equality holds:
-(= (pr-str mimir-peg) (pr-str peg-peg))
-
-;; Not Memoizing is faster here:
-(comment
-  (time (peg peg-grammar :memoize false)))
