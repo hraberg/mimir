@@ -258,6 +258,10 @@ This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.
 
 [Parsing Expression Grammars](http://www.brynosaurus.com/pub/lang/peg.pdf) Brian Ford, 2004
 
+[Left Recursion in Parsing Expression Grammars](http://arxiv.org/pdf/1207.0443.pdf) Sergio Medeiros et al, 2012
+
+[Scannerless Generalized-LR Parsing](file:///home/hraberg/Downloads/10.1.1.37.7828.pdf) Eelco Visser, 1997
+
 [Generalized Parser Combinators](http://www.cs.uwm.edu/~dspiewak/papers/generalized-parser-combinators.pdf) Daniel Spiewak, 2010
 
 [Metafor: Visualising Stories as Code](http://web.media.mit.edu/~hugo/publications/drafts/IUI2005-metafor.4.pdf) Hugo Liu and Henery Lieberman, 2005
