@@ -264,6 +264,8 @@ This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.
 
 [Parsing Expression Grammars](http://www.brynosaurus.com/pub/lang/peg.pdf) Brian Ford, 2004
 
+[Packrat Parsers Can Support Left Recursion](http://www.tinlizzie.org/~awarth/papers/pepm08.pdf) Alessandro Warth et al, 2008
+
 [Left Recursion in Parsing Expression Grammars](http://arxiv.org/pdf/1207.0443.pdf) Sergio Medeiros et al, 2012
 
 [Scannerless Generalized-LR Parsing](file:///home/hraberg/Downloads/10.1.1.37.7828.pdf) Eelco Visser, 1997

@@ -197,6 +197,8 @@
     ([this in]
        (next-token in (re-pattern (Pattern/quote this)) *capture-literals*)))
 
+  ;; Aim to implement left recursion (and rewrite memoize) using http://www.dcomp.ufs.br/~sergio/docs/leftpeglist.pdf
+  ;; IronMeta contains a C# implementation of the algorithm: http://ironmeta.sourceforge.net/
   Keyword
   (parse [this in]
     (when-not (*rules-seen-at-point* [this in])  ;; Only guards against StackOverflow, doesn't actually handle left recursion.
@@ -295,11 +297,10 @@
 (defn parser-option [option]
   (letfn [(unknown-option [option] (throw (IllegalArgumentException. (str "Unknown option: " option))))]
     (if (keyword? option)
-      (if-let [o (resolve (symbol (str "*" (name option) "*")))]
-        (if (:private (meta o))
-          (unknown-option option)
-          o)
-        (unknown-option option))
+      (or (when-let [option (resolve (symbol (str "*" (name option) "*")))]
+            (when-not (:private (meta option))
+              option))
+          (unknown-option option))
       option)))
 
 (defn parser-options [options]
@@ -318,11 +319,10 @@
                 (try
                   (when *memoize* ;; Just rebinding doesn't work for some reason
                     (alter-var-root #'parse memoize))
-                  (if-let [in (parse grammar in)]
-                    (if (at-end? in)
-                      (*extract-result* in)
+                  (or (when-let [in (parse grammar in)]
+                        (when (at-end? in)
+                          (*extract-result* in)))
                       (parse *failure-grammar* in))
-                    (parse *failure-grammar* in))
                   (finally
                    (when *memoize*
                      (alter-var-root #'parse (constantly real-parse))))))))))))

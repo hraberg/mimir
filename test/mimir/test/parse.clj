@@ -317,3 +317,98 @@
                  :world "World"))
 
 (helloworld "Hello Hello World")
+
+;; This grammar is from Mouse, but uses slightly different PEG syntax:
+;; http://www.romanredz.se/freesoft.htm
+(def c-grammar (slurp "test/mimir/test/C.peg"))
+;; (peg c-grammar)
+
+;; Some comments and example about left recursion from the PEG mailing list:
+;;
+
+;; I've settled on a strategy that tries to expand out as much left
+;; recursion as possible, from left to right.
+
+;; Some example parse trees:
+
+;; S -> SS / a
+;; with "aaaa" gives S(S(S(S(a), S(a)), S(a)), S(a))
+
+;; S -> ST / a
+;; T -> S
+;; with "aaaa" gives S(S(S(S(a), T(S(a))), T(S(a))), T(S(a)))
+
+;; S -> S S T / S c / a  / b
+;; T -> d
+
+;; with "abcd" gives S(S(a), S(S(b), c), T(d))
+;; with "abcdabcdd gives S(S(S(a), S(S(b), c), T(d)), S(S(a), S(S(b), c),
+;; T(d)), T(d))
+
+;; It goes left-to-right in the sense that it will try to expand the
+;; first left recursion it encounters. Once it can't keep going with
+;; that, it will try to expand out any other left-recursive invocations
+;; of the same variable later in the string, regardless of if they appear
+;; in the same production as the left recursive invocation.
+
+;; If one needs a right leaning tree with left recursion then now (with
+;; my system) it is no longer possible, i.e. left lean for left recursion
+;; is forced.
+
+;; A very high level description of my algorithm is that I group the
+;; parser stack into chunks representing continuations. When I detect
+;; left recursion, I copy of chunk of the top-most continuation on the
+;; stack, store it in the memo table, and then advance the topmost parser
+;; frame to the next production. When parsing of a variable is completed,
+;; all continuations stored in that variable's memo entry at that
+;; position are attempted in the order with which they were added into
+;; the memo table. Updating the results of a memo table entry (i.e.
+;; successfully parsing something) resets the memo entry's next
+;; continuation pointer to the first continuation added to the memo
+;; entry. The big trick is that if we are in the continuation of a
+;; variable (i.e. the size of the continuation stack > 1) and we detect a
+;; left recursive invocation of the same variable then instead of adding
+;; it to the memo entry for the variable at the current string position,
+;; we add it to the memo entry of the start of the current continuation's
+;; string position.
+
+;; Best Regards,
+
+;; Peter Goodman,
+
+;; Fun with left recursion
+
+;; Left recursion in PEGs indeed seems like an interesting can of worms.  For those interested, I'm wondering
+;; how a few example grammars behave under your preferred left-recursive parsing technique, and how you
+;; think they should behave.
+
+;; First, a trivially evil left-recursive grammar:
+
+;; S <- S
+
+;; For example, does your parser detect and reject this somehow, or does it behave the same as 'S <- f'?  (I hope it
+;; doesn't result in an infinite loop at runtime anyway. :) )
+
+;; Now a grammar that's weird, not necessarily evil, in a slightly more subtle way:
+
+;; S <- S / a
+
+;; Does this behave the same as 'S <- a', or do something else?  How should it behave?
+
+;; Cranking up the evilness factor one notch with a mutually left-recursive grammar…
+
+;; S <- T / a
+;; T <- S / &a
+
+;; Given the input string "a", does this behave the same as 'S <- a' (succeeding and consuming) or the same as 'S
+;; <- &a' (succeeding but consuming no input)?  Do S and T behave the same way or differently?  Should they?
+
+;; Now, another grammar that's not necessarily evil but strange in a slightly different way:
+
+;; S <- Saa / a /
+
+;; Given the input string 'aaaa', for example, does/should this grammar consume just 3 or all 4 a's, or does it
+;; do something else?  What should it do?
+
+;; Cheers,
+;; Bryan
