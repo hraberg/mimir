@@ -204,7 +204,7 @@ Mímir now also contains an [experimental parser](https://github.com/hraberg/mim
 
 See [`mimir.test.parse`](https://github.com/hraberg/mimir/blob/master/test/mimir/test/parse.clj) for examples (but an absolute lack of proper tests). Many things doesn't work properly yet, and the theoretical foundations are shaky to say the least. It doesn't support left-recursion - and a few things are broken. I'm currently backing off to read a few papers, so the references list will hopefully be updated in a few days, once I understand more about what I don't understand.
 
-The idea is to eventually fold this together with Mímir's normal matcher so rules can descend into strings as well, [OMeta](http://tinlizzie.org/ometa/) style.
+The idea is to eventually fold this together with Mímir's normal matcher so rules can descend into strings as well, inspired by [OMeta](http://tinlizzie.org/ometa/).
 
 ```clojure
 (def right-recursive                   ;; Note: right associative.
