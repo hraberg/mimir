@@ -1,0 +1,114 @@
+;; From "A Prism Primer", David A. Mundie, 1991, p 203-204
+;; http://www.dtic.mil/cgi-bin/GetTRDoc?AD=ADA240565
+;; Just slightly cleaned up from the OCR, not matching any specific grammar syntax.
+
+;; "Prismatic Samples", p 217:
+;; "Prism's view that interacting with a computer is a kind of dialog,
+;; its commitment to supporting intensionality and incompleteness, and its avoidance of overspecification,
+;; all require a language quite different from the purely extensional languages of the past."
+
+;; Appendix A.- Collected Syntax
+
+name => np
+
+quantifier [premodifier]  type_iteral [postmodifier] => np
+
+text_literal | graphic_literal | pronoun => name
+
+name ["' name] => name
+
+'(' np ')' => name
+
+type_name '['  np  [','  np]  ']' => name
+
+['at least' | 'at most' | 'exactly'] number_name => quantifier
+
+'some' | 'few' | 'many' | 'most' => quantifier
+
+'all' [number-name] => quantifier
+
+'every' [ordinal]  => quantifier
+
+'any' [number name] => quantifier
+
+'a' | 'an' | 'the' [number_name] => quantifier
+
+property_name | type_name => premodifier
+
+number_name [unit-np] => measure_np
+
+measure_np [x measure_np] => premodifier
+
+preposition noun_phrase => prepositional phrase
+
+prepositional_phrase  => postmodifler
+
+'in'  ['reverse'] [binaryBooleanFunction_name] 'order' => postmodifier
+
+'such that' claim  => postmodifier
+
+'that' vp => postmodifier
+
+Boolean_np => claim
+
+np vp => claim
+
+claim '.' => declaration
+
+np '=def' np => claim
+
+np  '=imp' np => claim
+
+np '=def' np => claim
+
+np '=imp' np => claim
+
+action_verb [prepositional phrase] '(' [np [',' np]] ')' => action_vp
+
+action_verb [prepositional phrase] [np ['to' np]] => action_yp
+
+action_vp => vp
+
+copulative [np | premodifier | postmodifler] => vp
+
+action_vp => imperation
+
+variable '<-' np => imperation
+
+premodifier | postmodifier | np | vp | claim => form
+
+form ',' [form  ',']  ['and' | 'or'] form => type of form
+
+form conjunction form => type of form
+
+'and' | 'or' | 'xor' | 'iff  | 'implies' => conjunction
+
+'not' form => form
+
+np | declaration | imperation | interrogation => computation
+
+'<'  simple_name '>' computation =>  type of computation
+
+'with' np 'do' computation => type of computation
+
+'case' ['when' claim '=>' computation] => type of computation
+
+'case' np ['when' np '=>' computation] => type of computation
+
+'others' => claim | np
+
+'if' claim 'then' computation => type of computation
+
+'for' np 'do' computation => type of computation
+
+declaration | impernation  => sentence
+
+claim '!' => interactive_declaration
+
+vp '!' => interactiveimperation
+
+claim '?' => interactivejnterrogation
+
+np '!' =>  interactive_calculation
+
+interactive_calculation | interactive_declaration | interactive_imperation | interactive_interrogation => sentence
