@@ -278,6 +278,8 @@ This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.
 
 [Natural Language, Semantic Analysis and Interactive Fiction](http://inform7.com/learn/documents/WhitePaper.pdf) Graham Nelson, 2005, revised 2006
 
+[A Conceptual Overview of Prism (Languages Beyond Ada and Lisp)](http://www.dtic.mil/cgi-bin/GetTRDoc?AD=ADA240565) David Fisher and David Mundie et al, 1991 - "Our means of achieving this integrated framework is a language emphasizing expressivity and serving as a medium for dialogue, rather than one-way communication, between user and machine."
+
 [Patterns of Software](http://www.dreamsongs.com/Files/PatternsOfSoftware.pdf) Richard Gabriel, 1996
 
 [Aramis or the Love of Technology](http://www.bruno-latour.fr/node/106) Bruno Latour, 1996
