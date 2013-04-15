@@ -1,6 +1,7 @@
 ;; From "A Prism Primer", David A. Mundie, 1991, p 203-204
 ;; http://www.dtic.mil/cgi-bin/GetTRDoc?AD=ADA240565
 ;; Just slightly cleaned up from the OCR, not matching any specific grammar syntax.
+;; The grammar is explained in the next paper, "Grammar 0.5" ibid. p 205.
 
 ;; "Prismatic Samples", p 217:
 ;; "Prism's view that interacting with a computer is a kind of dialog,
@@ -11,11 +12,11 @@
 
 name => np
 
-quantifier [premodifier]  type_iteral [postmodifier] => np
+quantifier [premodifier]  type_literal [postmodifier] => np
 
 text_literal | graphic_literal | pronoun => name
 
-name ["' name] => name
+name ['\'' name] => name
 
 '(' np ')' => name
 
@@ -25,17 +26,17 @@ type_name '['  np  [','  np]  ']' => name
 
 'some' | 'few' | 'many' | 'most' => quantifier
 
-'all' [number-name] => quantifier
+'all' [number_name] => quantifier
 
 'every' [ordinal]  => quantifier
 
-'any' [number name] => quantifier
+'any' [number_name] => quantifier
 
 'a' | 'an' | 'the' [number_name] => quantifier
 
 property_name | type_name => premodifier
 
-number_name [unit-np] => measure_np
+number_name [unit_np] => measure_np
 
 measure_np [x measure_np] => premodifier
 
@@ -57,7 +58,7 @@ claim '.' => declaration
 
 np '=def' np => claim
 
-np  '=imp' np => claim
+np '=imp' np => claim
 
 np '=def' np => claim
 
@@ -105,9 +106,9 @@ declaration | impernation  => sentence
 
 claim '!' => interactive_declaration
 
-vp '!' => interactiveimperation
+vp '!' => interactive_imperation
 
-claim '?' => interactivejnterrogation
+claim '?' => interactive_nterrogation
 
 np '!' =>  interactive_calculation
 
