@@ -6,7 +6,7 @@
 
 ### Mímir is an experimental rule engine written in Clojure.
 
-[Marginalia](http://ghettojedi.org/mimir/) | <iframe style="border: 0; margin: 0; padding: 0;" src="https://www.gittip.com/hraberg/widget.html" width="48pt" height="22pt"></iframe>
+[Marginalia](http://ghettojedi.org/mimir/) | [Gittip](https://www.gittip.com/hraberg/)
 
 Mímir aims to implement a Rete network as a base. I don't vouch for its correctness, soundness or anything, actually. Like Mímir surely would attest, using it would be somewhat headless. Here's how it looks:
 
