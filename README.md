@@ -233,6 +233,8 @@ This example is (somewhat changed) from these [lecture notes](http://www.cs.umd.
 
 [OPS5](https://github.com/briangu/OPS5) "This Common Lisp version of OPS5 is in the public domain.  It is based in part on based on a Franz Lisp implementation done by Charles L. Forgy"
 
+[Clara](https://github.com/rbrush/clara-rules) "Clara is a forward-chaining rules engine written in Clojure" Ryan Brush, 2013
+
 [Rule-Based Expert Systems: The MYCIN Experiments of the Stanford Heuristic Programming Project](http://www.amia.org/staff/eshortliffe/Buchanan-Shortliffe-1984/MYCIN%20Book.htm) Bruce G. Buchanan and Edward H. Shortliffe, 1984. Full out-of-print book free online.
 
 [Relational Programming in miniKanren: Techniques, Applications, and Implementations](http://gradworks.umi.com/3380156.pdf) William Byrd, 2009
